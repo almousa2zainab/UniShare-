@@ -1,182 +1,181 @@
 import sqlite3
 
-def create_database():
-    conn = sqlite3.connect("unishare.db")
-    cursor = conn.cursor()
+# Connect to database
+conn = sqlite3.connect("unishare.db")
+conn.execute("PRAGMA foreign_keys = ON")
+cursor = conn.cursor()
 
-    # foreign key constraints
-    cursor.execute("PRAGMA foreign_keys = ON")
 
-# Table 1: User
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS User (
-            UserID INTEGER PRIMARY KEY AUTOINCREMENT,
-            FullName TEXT NOT NULL,
-            Email TEXT UNIQUE NOT NULL,
-            Password TEXT NOT NULL,
-            Role TEXT NOT NULL,
-            UserRFID TEXT UNIQUE
-        )
-    """)
+# Delete old tables
 
-# Table 2: Equipment
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Equipment (
-            EquipmentID INTEGER PRIMARY KEY AUTOINCREMENT,
-            EquipmentName TEXT NOT NULL,
-            Category TEXT NOT NULL,
-            Description TEXT,
-            EquipmentRFID TEXT UNIQUE,
-            Status TEXT NOT NULL DEFAULT 'Available'
-        )
-    """)
+cursor.execute("DROP TABLE IF EXISTS BorrowingRecord")
+cursor.execute("DROP TABLE IF EXISTS Equipment")
+cursor.execute("DROP TABLE IF EXISTS User")
+cursor.execute("DROP TABLE IF EXISTS GraduationReport")
 
-# Table 3: BorrowingRecord
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS BorrowingRecord (
-            RecordID INTEGER PRIMARY KEY AUTOINCREMENT,
-            UserID INTEGER NOT NULL,
-            EquipmentID INTEGER NOT NULL,
-            RequestDate TEXT NOT NULL,
-            BorrowDate TEXT,
-            ExpectedReturnDate TEXT,
-            ActualReturnDate TEXT,
-            BorrowStatus TEXT NOT NULL DEFAULT 'Pending',
-            FOREIGN KEY (UserID) REFERENCES User(UserID),
-            FOREIGN KEY (EquipmentID) REFERENCES Equipment(EquipmentID)
-        )
-    """)
 
-# Table 4: GraduationReport
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS GraduationReport (
-            ReportID INTEGER PRIMARY KEY AUTOINCREMENT,
-            ProjectTitle TEXT NOT NULL,
-            AcademicYear TEXT NOT NULL,
-            FilePath TEXT NOT NULL,
-            UploadedBy INTEGER NOT NULL,
-            FOREIGN KEY (UploadedBy) REFERENCES User(UserID)
-        )
-    """)
+# Create User Table
 
-# User Data
-    users = [
-        (1, "Lara Hashem Alalmaei", "l_alalmaei@gmail.com", "L1234", "Student", None),
-        (2, "Refah Abdulaziz Alsubiey", "r_alsubiey@gmail.com", "R1234", "Student", None),
-        (3, "Shoug Bandar AlMaymuni", "s_almaymuni@gmail.com", "S1234", "Student", None),
-        (4, "Zainab Mohammed Almousa", "z_almousa@gmail.com", "Z1234", "Student", None),
-        (5, "Heba Saleh Albenmousa", "h_albenmousa@gmail.com", "H1234", "Student", None),
-        (6, "Layan Mubarak Alotaibi", "l_alotaibi@gmail.com", "L1234", "Student", None),
-        (7, "Moneerh Naif Alhaydhal", "m_alhaydhal@gmail.com", "M1234", "Student", None),
-        (8, "Sarah Fahad Alqahtani", "s_alqahtani@gmail.com", "S1234", "Admin", None),
-        (9, "Noura Hamad Alsultan", "n_alsultan@gmail.com", "N1234", "Admin", None),
-        (10, "Reem Khalid Aldosari", "r_aldosari@gmail.com", "R1234", "Admin", None),
-        (11, "Maha Sultan Alotibi", "m_alotibi@gmail.com", "M1234", "Staff", None),
-        (12, "Ghala Ali Abuthiba", "g_abuthiba@gmail.com", "G1234", "Staff", None),
-        (13, "Jawahir Saud Alharbi", "j_alharbi@gmail.com", "J1234", "Staff", None)
-    ]
+cursor.execute("""
+CREATE TABLE User (
+    UserID INTEGER PRIMARY KEY,
+    FullName TEXT NOT NULL,
+    Email TEXT NOT NULL UNIQUE,
+    Password TEXT NOT NULL,
+    Role TEXT NOT NULL
+)
+""")
 
-    cursor.executemany("""
-        INSERT OR IGNORE INTO User
-        (UserID, FullName, Email, Password, Role, UserRFID)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, users)
-
-# Equipment Data
-    equipment = [
-        (1, "Arduino Uno R3 Board", "Microcontrollers",
-     "Main microcontroller board with mounting holes for RFID tag.",
-     "EQ-RFID-101", "Available"),
-
-        (2, "Breadboard (400 Tie Points)", "Prototyping",
-     "Standard prototyping breadboard with side clip for RFID tag.",
-     "EQ-RFID-102", "Available"),
-
-        (3, "HC-SR04 Ultrasonic Sensor", "Sensors",
-     "Distance measurement sensor module with eyelet hole.",
-     "EQ-RFID-103", "Available"),
-
-        (4, "DHT11 Temperature Sensor", "Sensors",
-     "Basic digital temperature and humidity sensor module.",
-     "EQ-RFID-104", "Borrowed"),
-
-        (5, "SG90 Micro Servo Motor", "Motors",
-     "Small servo motor with mounting hole on plastic arm.",
-     "EQ-RFID-105", "Available"),
-
-        (6, "Jumper Wires (Male-to-Male)", "Cables & Adapters",
-     "Bundle of flexible jumper wires with tagged cable tie.",
-     "EQ-RFID-106", "Available"),
-
-        (7, "RGB LED Module", "LEDs",
-     "RGB LED module for electronic prototyping.",
-     "EQ-RFID-107", "Borrowed")
+users = [
+    (1, "Lara Hashem Alalmaei", "l.alalmaei@gmail.com", "L1234", "Student"),
+    (2, "Refah Abdulaziz Alsubiey", "r.alsubiey@gmail.com", "R1234", "Student"),
+    (3, "Shoug Bandar AlMaymuni", "s.almaymuni@gmail.com", "S1234", "Student"),
+    (4, "Zainab Mohammed Almousa", "z.almousa@gmail.com", "Z1234", "Student"),
+    (5, "Heba Saleh Albenmousa", "h.albenmousa@gmail.com", "H1234", "Student"),
+    (6, "Layan Mubarak Alotaibi", "l.alotaibi@gmail.com", "L1234", "Student"),
+    (7, "Moneerh Naif Alhaydhal", "m.alhaydhal@gmail.com", "M1234", "Student"),
+    (8, "Sarah Fahad Alqahtani", "s.alqahtani@gmail.com", "S1234", "Admin"),
+    (9, "Noura Hamad Alsultan", "n.alsultan@gmail.com", "N1234", "Admin"),
+    (10, "Reem Khalid Aldosari", "r.aldosari@gmail.com", "R1234", "Admin"),
+    (11, "Maha Sultan Alotibi", "m.alotibi@gmail.com", "M1234", "Staff"),
+    (12, "Ghala Ali Abuthiba", "g.abuthiba@gmail.com", "G1234", "Staff"),
+    (13, "Jawahir Saud Alharbi", "j.alharbi@gmail.com", "J1234", "Staff")
 ]
 
-    cursor.executemany("""
-    INSERT OR IGNORE INTO Equipment
-    (EquipmentID, EquipmentName, Category, Description, EquipmentRFID, Status)
-    VALUES (?, ?, ?, ?, ?, ?)
+cursor.executemany("""
+INSERT INTO User VALUES (?, ?, ?, ?, ?)
+""", users)
+
+
+
+# Create Equipment Table
+
+cursor.execute("""
+CREATE TABLE Equipment (
+    EquipmentID INTEGER PRIMARY KEY,
+    EquipmentName TEXT NOT NULL,
+    Category TEXT NOT NULL,
+    Description TEXT,
+    AcademicYear TEXT,
+    EquipmentRFID TEXT UNIQUE,
+    Status TEXT NOT NULL,
+    UploadedBy INTEGER,
+    FOREIGN KEY (UploadedBy) REFERENCES User(UserID)
+)
+""")
+
+equipment = [
+    (1, "Arduino Uno R3 Board", "Microcontrollers",
+     "Microcontroller board with RFID tag mounting.",
+     None, None, "Available", 11),
+
+    (2, "Breadboard (400 Tie Points)", "Prototyping",
+     "Prototyping breadboard with RFID side clip.",
+     None, None, "Available", 11),
+
+    (3, "HC-SR04 Ultrasonic Sensor", "Sensors",
+     "Distance measurement sensor module.",
+     None, None, "Available", 12),
+
+    (4, "DHT11 Temperature Sensor", "Sensors",
+     "Temperature and humidity sensor module.",
+     None, None, "Borrowed", 12),
+
+    (5, "SG90 Micro Servo Motor", "Motors",
+     "Lightweight servo motor on plastic arm.",
+     None, None, "Available", 13),
+
+    (6, "PR001", "Candidate printed research papers",
+     "Explainable AI framework for Alzheimer's disease diagnosis.",
+     "2024", None, "Available", 11),
+
+    (7, "PR002", "Candidate printed research papers",
+     "Real-time crop row detection in agricultural robotics.",
+     "2024", None, "Available", 11),
+
+    (8, "PR003", "Candidate printed research papers",
+     "Abstractive LSTM for automatic text summarization.",
+     "2024", None, "Available", 12),
+
+    (9, "GP001", "Printed AI / CS graduation reports",
+     "Supervised and unsupervised models for disease extraction.",
+     "2024", None, "Available", 11),
+
+    (10, "GP002", "Printed AI / CS graduation reports",
+     "Ground-truth neural cavity using IMU on bicycles.",
+     "2024", None, "Available", 12),
+
+    (11, "GP003", "Printed AI / CS graduation reports",
+     "Generative AI study on academic performance.",
+     "2024", None, "Available", 13)
+]
+
+cursor.executemany("""
+INSERT INTO Equipment
+(EquipmentID, EquipmentName, Category, Description,
+ AcademicYear, EquipmentRFID, Status, UploadedBy)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 """, equipment)
 
-# BorrowingRecord Data
-    borrowing_records = [
-    (1, 1, 3, "10-05-2026", "11-05-2026", "18-05-2026", "17-05-2026", "Returned"),
-    (2, 2, 1, "12-05-2026", "12-05-2026", "20-05-2026", "19-05-2026", "Returned"),
-    (3, 3, 4, "14-05-2026", "15-05-2026", "22-05-2026", None, "Borrowed"),
-    (4, 4, 5, "15-05-2026", "16-05-2026", "23-05-2026", "22-05-2026", "Returned"),
-    (5, 5, 6, "18-05-2026", "18-05-2026", "25-05-2026", None, "Borrowed"),
-    (6, 6, 2, "20-05-2026", "21-05-2026", "28-05-2026", "27-05-2026", "Returned"),
-    (7, 7, 7, "22-05-2026", "22-05-2026", "29-05-2026", None, "Borrowed")
-    ]
 
 
-    cursor.executemany("""
-    INSERT OR IGNORE INTO BorrowingRecord
-    (RecordID, UserID, EquipmentID, RequestDate, BorrowDate,
-     ExpectedReturnDate, ActualReturnDate, BorrowStatus)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-""", borrowing_records)
+# Create BorrowingRecord Table
+
+cursor.execute("""
+CREATE TABLE BorrowingRecord (
+    RecordID INTEGER PRIMARY KEY,
+    UserID INTEGER NOT NULL,
+    EquipmentID INTEGER NOT NULL,
+    RequestDate TEXT NOT NULL,
+    BorrowDate TEXT,
+    ExpectedReturnDate TEXT,
+    ActualReturnDate TEXT,
+    BorrowStatus TEXT NOT NULL,
+    FOREIGN KEY (UserID) REFERENCES User(UserID),
+    FOREIGN KEY (EquipmentID) REFERENCES Equipment(EquipmentID)
+)
+""")
+
+borrowings = [
+    (1, 1, 3, "2026-10-05", "2026-10-05", "2026-10-12", "2026-10-10", "Returned"),
+    (2, 2, 1, "2026-10-06", "2026-10-06", "2026-10-13", "2026-10-11", "Returned"),
+    (3, 3, 4, "2026-10-08", "2026-10-09", "2026-10-16", None, "Borrowed"),
+    (4, 4, 5, "2026-10-09", "2026-10-10", "2026-10-17", "2026-10-14", "Returned"),
+    (5, 5, 6, "2026-10-10", "2026-10-10", "2026-10-17", None, "Borrowed"),
+    (6, 6, 2, "2026-10-11", "2026-10-12", "2026-10-19", "2026-10-14", "Returned"),
+    (7, 7, 7, "2026-10-12", "2026-10-12", "2026-10-19", None, "Borrowed")
+]
+
+cursor.executemany("""
+INSERT INTO BorrowingRecord
+(RecordID, UserID, EquipmentID, RequestDate, BorrowDate,
+ ExpectedReturnDate, ActualReturnDate, BorrowStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+""", borrowings)
+
+conn.commit()
+
+print("Database created successfully!")
 
 
-# Save changes
-    conn.commit()
+# Display Tables
 
-   
-# Display all tables and their data
-    for table in ["User", "Equipment", "BorrowingRecord", "GraduationReport"]:
-        print(f"\n{'-' * 80}")
-        print(f"Table: {table}")
-        print("=" * 80)
+tables = ["User", "Equipment", "BorrowingRecord"]
 
-        cursor.execute(f"SELECT * FROM {table}")
+for table in tables:
+    print("\n" + "=" * 60)
+    print(f"TABLE: {table}")
+    print("=" * 60)
 
-        # Display column names
-        columns = [description[0] for description in cursor.description]
-        print(" | ".join(columns))
-        print("-" * 80)
+    cursor.execute(f"SELECT * FROM {table}")
+    rows = cursor.fetchall()
 
-        # Display records
-        rows = cursor.fetchall()
+    columns = [description[0] for description in cursor.description]
+    print(columns)
 
-        if rows:
-            for row in rows:
-                print(row)
-        else:
-            print("No records found.")
+    for row in rows:
+        print(row)
 
-    conn.close()
+    print(f"\nTotal Records: {len(rows)}")
 
-
-# Display database summary
-    print("UniShare database created successfully!")
-
-    for table in ["User", "Equipment", "BorrowingRecord", "GraduationReport"]:
-        cursor.execute(f"SELECT COUNT(*) FROM {table}")
-        count = cursor.fetchone()[0]
-        print(f"{table}: {count} records")
-
-    conn.close()
-
-if __name__ == "__main__":
-    create_database()
+conn.close()
