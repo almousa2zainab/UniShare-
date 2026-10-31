@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniShare - Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="UniShare">
+  </header>
+
+  <!-- Main card -->
+  <main>
+    <div class="card {{ 'signup-mode' if mode == 'signup' }}" id="card">
+
+      <!-- Left: welcome panel -->
+      <section class="welcome">
+        <div class="welcome-login">
+          <span class="eyebrow">Welcome to UniShare</span>
+          <h2>Welcome<br>Back!</h2>
+          <p>Log in to borrow lab equipment and explore graduation project reports.</p>
+          <button type="button" class="ghost" id="toSignup">Sign up</button>
+        </div>
+
+        <div class="welcome-signup">
+          <span class="eyebrow">New to UniShare?</span>
+          <h2>Manage<br>Explore<br>Share</h2>
+          <p>Laboratory Equipment &amp; AI Student Projects</p>
+          <button type="button" class="ghost" id="toLogin">Sign in</button>
+        </div>
+      </section>
+
+      <!-- Right: forms -->
+      <section class="forms">
+        <!-- Login form -->
+        <form method="post" action="{{ url_for('login') }}" id="loginForm">
+          <h1>Login</h1>
+          {% if error and mode != 'signup' %}<p class="error">{{ error }}</p>{% endif %}
+
+          <label>Email
+            <input type="email" name="email" required>
+          </label>
+          <label>Password
+            <span class="pw">
+              <input type="password" name="password" required>
+              <button type="button" class="eye" aria-label="Show password">&#128065;</button>
+            </span>
+          </label>
+          <button type="submit" class="primary">Login</button>
+        </form>
+
+        <!-- Sign up form -->
+        <form method="post" action="{{ url_for('signup') }}" id="signupForm">
+          <h1>Sign up</h1>
+          {% if error and mode == 'signup' %}<p class="error">{{ error }}</p>{% endif %}
+
+          <label>Full name
+            <input type="text" name="name" required>
+          </label>
+          <label>Email
+            <input type="email" name="email" required>
+          </label>
+          <label>Password
+            <span class="pw">
+              <input type="password" name="password" required>
+              <button type="button" class="eye" aria-label="Show password">&#128065;</button>
+            </span>
+          </label>
+          <label>Repeat password
+            <span class="pw">
+              <input type="password" name="confirm" required>
+              <button type="button" class="eye" aria-label="Show password">&#128065;</button>
+            </span>
+          </label>
+          <button type="submit" class="primary">Create account</button>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Bottom bar: links to the other interfaces (placeholders until those pages exist) -->
+  <footer class="bottombar">
+    <span class="brandmark">UNISHARE<i>.</i></span>
+    <nav>
+      <a href="#">Equipment &amp; Resources</a>
+      <a href="#">AI Graduation Projects</a>
+      <a href="#">My Borrowings</a>
+      <a href="#">Support</a>
+    </nav>
+    <span class="copy">&copy; 2026 UniShare<br>CSC 305 &middot; IAU</span>
+  </footer>
+
+  <script>
+    const card = document.getElementById("card");
+    document.getElementById("toSignup").onclick = () => card.classList.add("signup-mode");
+    document.getElementById("toLogin").onclick = () => card.classList.remove("signup-mode");
+
+    document.querySelectorAll(".eye").forEach(btn => {
+      btn.onclick = () => {
+        const input = btn.parentElement.querySelector("input");
+        input.type = input.type === "password" ? "text" : "password";
+      };
+    });
+  </script>
+</body>
+</html>
