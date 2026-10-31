@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniShare Admin Dashboard</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/admin.css') }}">
+
+</head>
+<body>
+    <div class="sidebar">
+
+    <div class="brand">
+    <img src="{{ url_for('static', filename='images/logo.png') }}"
+         alt="UniShare Logo">
+</div>
+
+    <p class="menu-title">WORKSPACE</p>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_home') }}">System Overview</a>
+        <a href="{{ url_for('admin_resources') }}">Resource Management</a>
+        <a href="{{ url_for('admin_transactions') }}">All Transactions</a>
+        <a href="{{ url_for('admin_users') }}" class="active">User & Role Management</a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <strong>{{ admin_name }}</strong>
+        <a href="{{ url_for('logout') }}">Sign out</a>
+    </div>
+
+</div>
+<main class="main-content">
+
+    <div class="page-header">
+    <div>
+        <p class="page-label">UNISHARE WORKSPACE · ADMINISTRATOR</p>
+
+        <h1>User & Role Management</h1>
+
+        <p class="page-description">
+            View registered users and manage their roles in UniShare.
+        </p>
+    </div>
+</div>
+
+<section class="transactions-section">
+
+    <div class="section-header">
+        <h2>Registered Users</h2>
+        <p>All users currently registered in the system.</p>
+    </div>
+
+    <div class="transactions-table-container">
+
+        <table class="transactions-table">
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for user in users %}
+
+                <tr>
+                    <td>{{ user["UserID"] }}</td>
+                    <td>{{ user["FullName"] }}</td>
+                    <td>{{ user["Email"] }}</td>
+
+                    <td>
+                        <span class="role-badge {{ user['Role']|lower }}">
+                            {{ user["Role"] }}
+                        </span>
+                    </td>
+
+                    <td>
+    <form method="POST"
+          action="{{ url_for('update_user_role', user_id=user['UserID']) }}"
+          class="role-form">
+
+        <select name="role" class="role-select">
+            <option value="Student"
+                {% if user["Role"] == "Student" %}selected{% endif %}>
+                Student
+            </option>
+
+            <option value="Staff"
+                {% if user["Role"] == "Staff" %}selected{% endif %}>
+                Staff
+            </option>
+
+            <option value="Admin"
+                {% if user["Role"] == "Admin" %}selected{% endif %}>
+                Admin
+            </option>
+        </select>
+
+        <button type="submit" class="edit-resource-btn">
+            Save
+        </button>
+
+    </form>
+</td>
+                </tr>
+
+                {% endfor %}
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+</main>
+</body>
+</html>

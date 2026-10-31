@@ -116,8 +116,272 @@ def staff_home():
 
 @app.route("/admin")
 def admin_home():
-    return role_page("Admin", "Administrator Portal")
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
 
+    conn = sqlite3.connect(DB_PATH)
 
+    # Number of available resources
+    available_resources = conn.execute(
+        "SELECT COUNT(*) FROM Equipment WHERE Status = 'Available'"
+    ).fetchone()[0]
+
+    # Number of currently borrowed resources
+    currently_borrowed = conn.execute(
+        "SELECT COUNT(*) FROM BorrowingRecord WHERE BorrowStatus = 'Borrowed'"
+    ).fetchone()[0]
+
+    # Number of printed graduation reports
+    printed_reports = conn.execute(
+        """SELECT COUNT(*) FROM Equipment
+           WHERE Category = 'Printed AI / CS graduation reports'"""
+    ).fetchone()[0]
+
+    # Number of different resource categories
+    resource_types = conn.execute(
+        "SELECT COUNT(DISTINCT Category) FROM Equipment"
+    ).fetchone()[0]
+    # Get 3 resources for the dashboard snapshot 
+    resources = conn.execute(
+    """SELECT EquipmentName, Category, Status
+       FROM Equipment
+       ORDER BY EquipmentID
+       LIMIT 3"""
+    ).fetchall()
+    recent_activity = conn.execute(
+    """
+    SELECT User.FullName,
+           Equipment.EquipmentName,
+           BorrowingRecord.RequestDate,
+           BorrowingRecord.BorrowStatus
+    FROM BorrowingRecord
+    JOIN User
+        ON BorrowingRecord.UserID = User.UserID
+    JOIN Equipment
+        ON BorrowingRecord.EquipmentID = Equipment.EquipmentID
+    ORDER BY BorrowingRecord.RequestDate DESC
+    LIMIT 3
+    """
+).fetchall()
+    conn.close()
+
+    return render_template(
+        "admin/dashboard.html",
+        available_resources=available_resources,
+        currently_borrowed=currently_borrowed,
+        printed_reports=printed_reports,
+        resource_types=resource_types,
+        resources=resources,
+        recent_activity=recent_activity,
+        admin_name=session["name"]
+    )
+@app.route("/admin/resources")
+def admin_resources():
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    resources = conn.execute(
+        """SELECT EquipmentID, EquipmentName, Category, Description,
+                  AcademicYear, EquipmentRFID, Status, UploadedBy
+           FROM Equipment
+           ORDER BY EquipmentID"""
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "admin/resources.html",
+        resources=resources,
+        admin_name=session["name"]
+    )
+@app.route("/admin/resources/add", methods=["GET", "POST"])
+def add_resource():
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        name = request.form["name"].strip()
+        category = request.form["category"].strip()
+        description = request.form["description"].strip()
+        academic_year = request.form["academic_year"].strip()
+        rfid = request.form["rfid"].strip()
+
+        conn = sqlite3.connect(DB_PATH)
+
+        conn.execute(
+            """INSERT INTO Equipment
+               (EquipmentName, Category, Description, AcademicYear,
+                EquipmentRFID, Status, UploadedBy)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                name,
+                category,
+                description,
+                academic_year or None,
+                rfid or None,
+                "Available",
+                session["user_id"]
+            )
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("admin_resources"))
+
+    return render_template(
+        "admin/add_resource.html",
+        admin_name=session["name"]
+    )
+@app.route("/admin/resources/delete/<int:equipment_id>", methods=["POST"])
+def delete_resource(equipment_id):
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.execute(
+        "DELETE FROM Equipment WHERE EquipmentID = ?",
+        (equipment_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_resources"))
+@app.route("/admin/resources/edit/<int:equipment_id>", methods=["GET", "POST"])
+def edit_resource(equipment_id):
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    if request.method == "POST":
+        name = request.form["name"].strip()
+        category = request.form["category"].strip()
+        description = request.form["description"].strip()
+        academic_year = request.form["academic_year"].strip()
+        rfid = request.form["rfid"].strip()
+        status = request.form["status"]
+
+        conn.execute(
+            """UPDATE Equipment
+               SET EquipmentName = ?,
+                   Category = ?,
+                   Description = ?,
+                   AcademicYear = ?,
+                   EquipmentRFID = ?,
+                   Status = ?
+               WHERE EquipmentID = ?""",
+            (
+                name,
+                category,
+                description,
+                academic_year or None,
+                rfid or None,
+                status,
+                equipment_id
+            )
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("admin_resources"))
+
+    resource = conn.execute(
+        "SELECT * FROM Equipment WHERE EquipmentID = ?",
+        (equipment_id,)
+    ).fetchone()
+
+    conn.close()
+
+    return render_template(
+        "admin/edit_resource.html",
+        resource=resource,
+        admin_name=session["name"]
+    )
+@app.route("/admin/transactions")
+def admin_transactions():
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    transactions = conn.execute(
+        """
+        SELECT BorrowingRecord.RecordID,
+               User.FullName,
+               Equipment.EquipmentName,
+               BorrowingRecord.RequestDate,
+               BorrowingRecord.BorrowDate,
+               BorrowingRecord.ExpectedReturnDate,
+               BorrowingRecord.ActualReturnDate,
+               BorrowingRecord.BorrowStatus
+        FROM BorrowingRecord
+        JOIN User
+            ON BorrowingRecord.UserID = User.UserID
+        JOIN Equipment
+            ON BorrowingRecord.EquipmentID = Equipment.EquipmentID
+        ORDER BY BorrowingRecord.RecordID DESC
+        """
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "admin/transactions.html",
+        transactions=transactions,
+        admin_name=session["name"]
+    )
+@app.route("/admin/users")
+def admin_users():
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    users = conn.execute(
+        """
+        SELECT UserID, FullName, Email, Role
+        FROM User
+        ORDER BY UserID
+        """
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "admin/users.html",
+        users=users,
+        admin_name=session["name"]
+    )
+@app.route("/admin/users/<int:user_id>/role", methods=["POST"])
+def update_user_role(user_id):
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    new_role = request.form["role"]
+
+    if new_role not in ["Student", "Staff", "Admin"]:
+        return redirect(url_for("admin_users"))
+
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.execute(
+        "UPDATE User SET Role = ? WHERE UserID = ?",
+        (new_role, user_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_users"))
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniShare Admin Dashboard</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/admin.css') }}">
+
+</head>
+<body>
+    <div class="sidebar">
+
+    <div class="brand">
+    <img src="{{ url_for('static', filename='images/logo.png') }}"
+         alt="UniShare Logo">
+</div>
+
+    <p class="menu-title">WORKSPACE</p>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_home') }}">System Overview</a>
+        <a href="{{ url_for('admin_resources') }}" class="active">Resource Management</a>
+        <a href="#">All Transactions</a>
+        <a href="#">User & Role Management</a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <strong>{{ admin_name }}</strong>
+        <a href="{{ url_for('logout') }}">Sign out</a>
+    </div>
+
+</div>
+<main class="main-content">
+
+    <div class="page-header">
+    <div>
+        <p class="page-label">UNISHARE WORKSPACE · ADMINISTRATOR</p>
+
+        <h1>Add Resource</h1>
+
+        <p class="page-description">
+            Add a new resource to the UniShare system.
+        </p>
+    </div>
+</div>
+
+<section class="add-resource-section">
+
+    <form method="POST" class="resource-form">
+
+        <div class="form-group">
+            <label for="name">Resource Name</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="category">Category</label>
+            <input type="text" id="category" name="category" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="academic_year">Academic Year</label>
+            <input type="text" id="academic_year" name="academic_year">
+        </div>
+
+        <div class="form-group">
+            <label for="rfid">RFID Tag</label>
+            <input type="text" id="rfid" name="rfid">
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin_resources') }}" class="cancel-btn">
+                Cancel
+            </a>
+
+            <button type="submit" class="save-resource-btn">
+                Add Resource
+            </button>
+        </div>
+
+    </form>
+
+</section>
+</main>
+</body>
+</html>

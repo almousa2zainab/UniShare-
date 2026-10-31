@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniShare Admin Dashboard</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/admin.css') }}">
+
+</head>
+<body>
+    <div class="sidebar">
+
+    <div class="brand">
+    <img src="{{ url_for('static', filename='images/logo.png') }}"
+         alt="UniShare Logo">
+</div>
+
+    <p class="menu-title">WORKSPACE</p>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_home') }}">System Overview</a>
+        <a href="{{ url_for('admin_resources') }}">Resource Management</a>
+        <a href="{{ url_for('admin_transactions') }}" class="active">All Transactions</a>
+        <a href="{{ url_for('admin_users') }}">User & Role Management</a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <strong>{{ admin_name }}</strong>
+        <a href="{{ url_for('logout') }}">Sign out</a>
+    </div>
+
+</div>
+<main class="main-content">
+
+    <div class="page-header">
+    <div>
+        <p class="page-label">UNISHARE WORKSPACE · ADMINISTRATOR</p>
+
+        <h1>All Transactions</h1>
+
+        <p class="page-description">
+            Review all borrowing and return activity across UniShare.
+        </p>
+    </div>
+</div>
+
+<section class="transactions-section">
+
+    <div class="section-header">
+        <h2>Borrowing Records</h2>
+        <p>Complete history of resource transactions.</p>
+    </div>
+
+    <div class="transactions-table-container">
+
+        <table class="transactions-table">
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Resource</th>
+                    <th>Request Date</th>
+                    <th>Borrow Date</th>
+                    <th>Expected Return</th>
+                    <th>Actual Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for transaction in transactions %}
+
+                <tr>
+                    <td>{{ transaction["RecordID"] }}</td>
+                    <td>{{ transaction["FullName"] }}</td>
+                    <td>{{ transaction["EquipmentName"] }}</td>
+                    <td>{{ transaction["RequestDate"] }}</td>
+                    <td>{{ transaction["BorrowDate"] or "-" }}</td>
+                    <td>{{ transaction["ExpectedReturnDate"] or "-" }}</td>
+                    <td>{{ transaction["ActualReturnDate"] or "-" }}</td>
+
+                    <td>
+                        <span class="status {{ transaction['BorrowStatus']|lower }}">
+                            {{ transaction["BorrowStatus"] }}
+                        </span>
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+</main>
+</body>
+</html>

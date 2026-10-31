@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniShare Admin Dashboard</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/admin.css') }}">
+
+</head>
+<body>
+    <div class="sidebar">
+
+    <div class="brand">
+    <img src="{{ url_for('static', filename='images/logo.png') }}"
+         alt="UniShare Logo">
+</div>
+
+    <p class="menu-title">WORKSPACE</p>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('admin_home') }}" class="active">System Overview</a>
+        <a href="{{ url_for('admin_resources') }}">Resource Management</a>
+        <a href="{{ url_for('admin_transactions') }}">All Transactions</a>
+        <a href="{{ url_for('admin_users') }}">User & Role Management</a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <strong>{{ admin_name }}</strong>
+        <a href="{{ url_for('logout') }}">Sign out</a>
+    </div>
+
+</div>
+<main class="main-content">
+
+    <div class="page-header">
+
+        <div>
+            <p class="page-label">UNISHARE WORKSPACE · ADMINISTRATOR</p>
+
+            <h1>Welcome back, {{ admin_name }}</h1>
+
+            <p class="page-description">
+                Monitor platform activity, resources, transactions, and user access.
+            </p>
+        </div>
+
+        <a href="{{ url_for('admin_users') }}" class="manage-users-btn">Manage Users</a>
+
+    </div>
+
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+            <p>Available Resources</p>
+            <h2>{{ available_resources }}</h2>
+            <span>Resources ready to borrow</span>
+        </div>
+
+        <div class="stat-card">
+            <p>Currently Borrowed</p>
+            <h2>{{ currently_borrowed }}</h2>
+            <span>Active borrowing records</span>
+        </div>
+
+        <div class="stat-card">
+            <p>Printed Reports</p>
+            <h2>{{ printed_reports }}</h2>
+            <span>Graduation project reports</span>
+        </div>
+
+        <div class="stat-card">
+            <p>Resource Types</p>
+            <h2>{{ resource_types }}</h2>
+            <span>Available categories</span>
+        </div>
+
+    </div>
+<section class="administration-section">
+
+    <div class="section-header">
+        <h2>Recent Activity</h2>
+        <p>Latest borrowing activity across UniShare.</p>
+    </div>
+
+    <div class="admin-grid">
+
+        {% for activity in recent_activity %}
+
+        <div class="admin-card">
+            <h3>{{ activity[1] }}</h3>
+            <p>{{ activity[0] }}</p>
+            <p>{{ activity[2] }}</p>
+
+            <span class="status {{ activity[3]|lower }}">
+                {{ activity[3] }}
+            </span>
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+<section class="resource-section">
+
+    <div class="resource-section-header">
+        <div>
+            <h2>Resource Snapshot</h2>
+            <p>Quick overview of current resource status.</p>
+        </div>
+
+        <a href="{{ url_for('admin_resources') }}">Manage Resources →</a>
+    </div>
+
+   <div class="resource-grid">
+    {% for resource in resources %}
+
+    <div class="resource-card">
+        <div>
+            <h3>{{ resource[0] }}</h3>
+            <p>{{ resource[1] }}</p>
+        </div>
+
+        <span class="status {{ resource[2]|lower }}">
+            {{ resource[2] }}
+        </span>
+    </div>
+
+    {% endfor %}
+</div>
+
+</section>
+</main>
+</body>
+</html>
