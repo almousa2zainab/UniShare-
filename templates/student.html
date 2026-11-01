@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniShare - Student</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='student.css') }}">
+</head>
+<body>
+
+{# ---------- Top bar ---------- #}
+<header class="topbar">
+  <div class="topbar-inner">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UniShare">
+    <nav class="tabs" aria-label="Student pages">
+      <button class="tab" data-view="home">Home</button>
+      <button class="tab" data-view="resources">Equipment &amp; Resources</button>
+      <button class="tab" data-view="projects">AI Graduation Projects</button>
+    </nav>
+    <div class="user">{{ name }} <a href="{{ url_for('logout') }}">Log out</a></div>
+  </div>
+</header>
+
+<main>
+
+  {# ================= HOME ================= #}
+  <section class="view" id="view-home">
+    <div class="hero">
+      <h1>Welcome, {{ name }}</h1>
+      <p>Browse lab equipment, printed research papers, and AI graduation reports, and see what is available right now.</p>
+      <button class="btn go" data-view="resources">Browse resources</button>
+      <button class="btn go" data-view="projects">View graduation projects</button>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><strong>{{ counts.total }}</strong><span>Total resources</span></div>
+      <div class="card stat"><strong>{{ counts.available }}</strong><span>Available now</span></div>
+      <div class="card stat"><strong>{{ counts.borrowed }}</strong><span>Currently borrowed</span></div>
+      <div class="card stat"><strong>{{ counts.equipment }}</strong><span>Lab equipment items</span></div>
+      <div class="card stat"><strong>{{ counts.paper }}</strong><span>Printed research papers</span></div>
+      <div class="card stat"><strong>{{ counts.report }}</strong><span>Graduation reports</span></div>
+    </div>
+  </section>
+
+  {# ================= EQUIPMENT & RESOURCES ================= #}
+  <section class="view" id="view-resources">
+    <h1>Equipment &amp; Resources</h1>
+    <p class="lead">Search by name or description, then filter by type or status.</p>
+
+    <div class="toolbar" data-scope="resources">
+      <input type="search" class="f-search" placeholder="Search resources" aria-label="Search resources">
+      <select class="f-type" aria-label="Filter by type">
+        <option value="">All types</option>
+        <option value="equipment">Lab equipment</option>
+        <option value="paper">Research papers</option>
+        <option value="report">Graduation reports</option>
+      </select>
+      <select class="f-category" aria-label="Filter by category">
+        <option value="">All categories</option>
+        {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+      <select class="f-status" aria-label="Filter by status">
+        <option value="">Any status</option>
+        <option value="Available">Available</option>
+        <option value="Borrowed">Borrowed</option>
+      </select>
+    </div>
+    <p class="count" id="count-resources"></p>
+
+    <div class="grid" id="grid-resources">
+      {% for r in items %}
+      <article class="card item"
+               data-text="{{ (r.EquipmentName ~ ' ' ~ (r.Description or '') ~ ' ' ~ r.Category)|lower }}"
+               data-type="{{ r.type }}" data-category="{{ r.Category }}" data-status="{{ r.Status }}">
+        <div class="meta">
+          <span class="tag">{{ r.type_label }}</span>
+          <span class="status {{ r.Status }}">{{ r.Status }}</span>
+        </div>
+        <h3>{{ r.EquipmentName }}</h3>
+        <p>{{ r.Description or 'No description available.' }}</p>
+        <div class="meta"><span class="year">{{ r.Category }}{% if r.AcademicYear %} &middot; {{ r.AcademicYear }}{% endif %}</span></div>
+        <div class="item-foot">
+          {% if r.Status == 'Available' %}
+            <button class="btn small borrow" data-id="{{ r.EquipmentID }}">Request to borrow</button>
+          {% else %}
+            <button class="btn small" disabled>Not available</button>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="empty" id="empty-resources">No resources match your search. Clear a filter and try again.</div>
+  </section>
+
+  {# ================= AI GRADUATION PROJECTS ================= #}
+  <section class="view" id="view-projects">
+    <h1>AI Graduation Projects</h1>
+    <p class="lead">Printed graduation reports you can borrow from the lab.</p>
+
+    <div class="toolbar" data-scope="projects">
+      <input type="search" class="f-search" placeholder="Search graduation reports" aria-label="Search graduation reports">
+      <select class="f-status" aria-label="Filter by status">
+        <option value="">Any status</option>
+        <option value="Available">Available</option>
+        <option value="Borrowed">Borrowed</option>
+      </select>
+    </div>
+    <p class="count" id="count-projects"></p>
+
+    <div class="grid" id="grid-projects">
+      {% for r in items if r.type == 'report' %}
+      <article class="card item"
+               data-text="{{ (r.EquipmentName ~ ' ' ~ (r.Description or ''))|lower }}"
+               data-status="{{ r.Status }}">
+        <div class="meta">
+          <span class="tag">{{ r.EquipmentName }}</span>
+          <span class="status {{ r.Status }}">{{ r.Status }}</span>
+        </div>
+        <h3>{{ r.Description }}</h3>
+        <div class="meta"><span class="year">{{ r.Category }}{% if r.AcademicYear %} &middot; {{ r.AcademicYear }}{% endif %}</span></div>
+        <div class="item-foot">
+          {% if r.Status == 'Available' %}
+            <button class="btn small borrow" data-id="{{ r.EquipmentID }}">Request to borrow</button>
+          {% else %}
+            <button class="btn small" disabled>Not available</button>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="empty" id="empty-projects">No graduation reports match your search.</div>
+  </section>
+
+</main>
+
+<script>
+  // ----- Tabs (the address bar keeps #home / #resources / #projects) -----
+  const views = ["home", "resources", "projects"];
+  function show(view) {
+    if (!views.includes(view)) view = "home";
+    views.forEach(v => {
+      document.getElementById("view-" + v).classList.toggle("active", v === view);
+    });
+    document.querySelectorAll(".tab").forEach(t =>
+      t.classList.toggle("active", t.dataset.view === view));
+    history.replaceState(null, "", "#" + view);
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll("[data-view]").forEach(b =>
+    b.addEventListener("click", () => show(b.dataset.view)));
+  window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+  show(location.hash.slice(1));
+
+  // ----- Search + filters (no page reload) -----
+  function setupFilter(scope) {
+    const bar = document.querySelector('.toolbar[data-scope="' + scope + '"]');
+    const cards = document.querySelectorAll("#grid-" + scope + " .item");
+    const count = document.getElementById("count-" + scope);
+    const empty = document.getElementById("empty-" + scope);
+    const val = sel => { const el = bar.querySelector(sel); return el ? el.value : ""; };
+
+    function apply() {
+      const q = val(".f-search").trim().toLowerCase();
+      const type = val(".f-type"), cat = val(".f-category"), status = val(".f-status");
+      let shown = 0;
+      cards.forEach(c => {
+        const ok = (!q || c.dataset.text.includes(q))
+          && (!type || c.dataset.type === type)
+          && (!cat || c.dataset.category === cat)
+          && (!status || c.dataset.status === status);
+        c.style.display = ok ? "" : "none";
+        if (ok) shown++;
+      });
+      count.textContent = shown + " of " + cards.length + " shown";
+      empty.style.display = shown ? "none" : "block";
+    }
+    bar.addEventListener("input", apply);
+    apply();
+  }
+  setupFilter("resources");
+  setupFilter("projects");
+
+  // ----- Borrow button: PLACEHOLDER until Layan's Borrowing function is ready -----
+  document.querySelectorAll(".borrow").forEach(b =>
+    b.addEventListener("click", () => {
+      // Later: send b.dataset.id to Layan's borrow route
+      alert("Borrow requests will be available soon.");
+    }));
+</script>
+</body>
+</html>

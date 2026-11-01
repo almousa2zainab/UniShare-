@@ -103,11 +103,54 @@ def role_page(role, title):
         f"<a href='{url_for('logout')}'>Logout</a>"
     )
 
+# ============ STUDENT PAGES (Refah) - replace the old student_home with this block ============
+# Category name -> resource type (must match database.py exactly).
+# Any other category (Microcontrollers, Sensors, Motors, ...) counts as equipment.
+CATEGORY_TYPE = {
+    "Candidate printed research papers": ("paper", "Research paper"),
+    "Printed AI / CS graduation reports": ("report", "Graduation report"),
+}
+
 
 @app.route("/student")
 def student_home():
-    return role_page("Student", "Student Home")
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
 
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT EquipmentID, EquipmentName, Category, Description, "
+        "AcademicYear, Status FROM Equipment ORDER BY EquipmentID"
+    ).fetchall()
+    conn.close()
+
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["type"], item["type_label"] = CATEGORY_TYPE.get(
+            item["Category"], ("equipment", "Lab equipment")
+        )
+        items.append(item)
+
+    counts = {
+        "total": len(items),
+        "available": sum(1 for i in items if i["Status"] == "Available"),
+        "borrowed": sum(1 for i in items if i["Status"] == "Borrowed"),
+        "equipment": sum(1 for i in items if i["type"] == "equipment"),
+        "paper": sum(1 for i in items if i["type"] == "paper"),
+        "report": sum(1 for i in items if i["type"] == "report"),
+    }
+    categories = sorted({i["Category"] for i in items})
+
+    return render_template(
+        "student.html",
+        name=session["name"],
+        items=items,
+        counts=counts,
+        categories=categories,
+    )
+# ============ END STUDENT PAGES ============
 
 @app.route("/staff")
 def staff_home():
