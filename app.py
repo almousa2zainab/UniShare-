@@ -156,7 +156,7 @@ def student_home():
 def staff_home():
     return role_page("Staff", "Staff Dashboard")
 
-
+# ========== ADMIN PAGES (Lara) ==========
 @app.route("/admin")
 def admin_home():
     if session.get("role") != "Admin":
@@ -426,5 +426,6 @@ def update_user_role(user_id):
     conn.close()
 
     return redirect(url_for("admin_users"))
+# ========== END ADMIN PAGES ==========
 if __name__ == "__main__":
     app.run(debug=True)
