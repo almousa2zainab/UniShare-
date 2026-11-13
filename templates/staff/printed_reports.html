@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Printed Project Reports | UniShare</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/staff.css') }}">
+</head>
+
+<body>
+
+<div class="sidebar">
+
+    <div class="brand">
+        <img src="{{ url_for('static', filename='images/logo.png') }}"
+             alt="UniShare Logo">
+    </div>
+
+    <p class="menu-title">WORKSPACE</p>
+
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('staff_home') }}">Dashboard</a>
+        <a href="{{ url_for('staff_resources') }}">
+            Resource Management
+        </a>
+        <a href="{{ url_for('staff_reports') }}" class="active">
+            Printed Project Reports
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <strong>{{ staff_name }}</strong>
+        <a href="{{ url_for('logout') }}">Sign out</a>
+    </div>
+
+</div>
+
+
+<main class="main-content">
+
+    <div class="page-header">
+
+        <div>
+            <p class="page-label">UNISHARE WORKSPACE · STAFF</p>
+
+            <h1>Printed Project Reports</h1>
+
+            <p class="page-description">
+                View and manage printed research papers and graduation reports.
+            </p>
+        </div>
+
+    </div>
+
+
+    <section class="resource-section">
+
+        <div class="resource-section-header">
+
+            <div>
+                <h2>Printed Reports Collection</h2>
+
+                <p>
+                    Research papers and AI / CS graduation reports.
+                </p>
+            </div>
+
+            <a href="{{ url_for('staff_add_resource') }}"
+               class="add-resource-btn">
+                + Add Report
+            </a>
+
+        </div>
+
+
+        <div class="transactions-table-container">
+
+            <table class="transactions-table">
+
+                <thead>
+                    <tr>
+                        <th>Report Name</th>
+                        <th>Report Type</th>
+                        <th>Description</th>
+                        <th>Academic Year</th>
+                        <th>RFID UID</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    {% for report in reports %}
+
+                    <tr>
+
+                        <td>
+                            <strong>{{ report['EquipmentName'] }}</strong>
+                        </td>
+
+                        <td>
+                            {% if report['Category'] == 'Candidate printed research papers' %}
+                                Research Paper
+                            {% elif report['Category'] == 'Printed AI / CS graduation reports' %}
+                                Graduation Report
+                            {% else %}
+                                Other
+                            {% endif %}
+                        </td>
+
+                        <td>{{ report['Description'] or '-' }}</td>
+
+                        <td>{{ report['AcademicYear'] or '-' }}</td>
+
+                        <td>{{ report['EquipmentRFID'] or 'Not assigned' }}</td>
+
+                        <td>
+                            <span class="status {{ report['Status']|lower }}">
+                                {{ report['Status'] }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <a href="{{ url_for('staff_edit_resource',
+                                      equipment_id=report['EquipmentID']) }}"
+                               class="edit-resource-btn">
+                                Edit
+                            </a>
+                        </td>
+
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="7">
+                            No printed reports found.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</main>
+
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Resource - UniShare</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/staff.css') }}">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <h2>UniShare</h2>
+        </div>
+
+        <p class="menu-title">STAFF MENU</p>
+
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('staff_home') }}">Dashboard</a>
+
+            <a href="{{ url_for('staff_resources') }}" class="active">
+                Resource Management
+            </a>
+
+            <a href="{{ url_for('staff_reports') }}">
+                Printed Project Reports
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <strong>{{ staff_name }}</strong>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+
+    </aside>
+
+
+    <main class="main-content">
+
+        <div class="page-header">
+            <div>
+                <p class="page-label">RESOURCE MANAGEMENT</p>
+                <h1>Add New Resource</h1>
+
+                <p class="page-description">
+                    Add a new resource to the UniShare system.
+                </p>
+            </div>
+        </div>
+
+
+        <section class="add-resource-section">
+
+            <form method="POST"
+                  action="{{ url_for('staff_add_resource') }}"
+                  class="resource-form">
+
+                {% if error %}
+                    <div class="error-message">
+                        {{ error }}
+                    </div>
+                {% endif %}
+
+
+                <div class="form-group">
+
+                    <label for="name">Resource Name</label>
+
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value="{{ form.get('name', '') }}"
+                        placeholder="Enter resource name"
+                        required>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="category">Category</label>
+
+                    <select id="category" name="category" required>
+
+                        <option value="">Select a category</option>
+
+                        {% for category in categories %}
+
+                            <option value="{{ category }}"
+                                {% if form.get('category') == category %}
+                                    selected
+                                {% endif %}>
+
+                                {{ category }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="description">Description</label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="4"
+                        placeholder="Enter resource description">{{ form.get('description', '') }}</textarea>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="academic_year">Academic Year</label>
+
+                    <input
+                        type="text"
+                        id="academic_year"
+                        name="academic_year"
+                        value="{{ form.get('academic_year', '') }}"
+                        placeholder="Example: 2026"
+                        maxlength="4">
+
+                    <small>Enter the year using four digits.</small>
+
+                </div>
+
+
+                <div class="form-group">
+    <label for="rfid">RFID UID</label>
+
+    <div class="rfid-input-group">
+        <input
+            type="text"
+            id="rfid"
+            name="rfid"
+            value="{{ form.get('rfid', '') }}"
+            placeholder="Enter or scan RFID UID"
+        >
+
+        <button type="button" class="scan-rfid-btn"
+                onclick="scanRFID()">
+            Scan RFID
+        </button>
+    </div>
+
+    <small>Enter the UID manually or scan the RFID card.</small>
+</div>
+
+
+                <div class="form-actions">
+
+                    <a href="{{ url_for('staff_resources') }}"
+                       class="cancel-btn">
+                        Cancel
+                    </a>
+
+                    <button type="submit" class="save-resource-btn">
+                        Save Resource
+                    </button>
+
+                </div>
+
+            </form>
+
+        </section>
+
+    </main>
+
+    <script>
+function scanRFID() {
+    alert("RFID scanner integration is pending. It will be connected to the shared RFID service.");
+}
+</script>
+
+</body>
+</html>
