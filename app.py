@@ -1,6 +1,7 @@
 import os
+import re
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, abort
 from markupsafe import escape
 
 app = Flask(__name__)
@@ -152,9 +153,290 @@ def student_home():
     )
 # ============ END STUDENT PAGES ============
 
+
+
+# ========== STAFF RESOURCE MANAGEMENT(Shoug) ==========
+
+PAPER_CAT = "Candidate printed research papers"
+REPORT_CAT = "Printed AI / CS graduation reports"
+
+STAFF_CATEGORIES = [
+    "Microcontrollers",
+    "Prototyping",
+    "Sensors",
+    "Motors",
+    PAPER_CAT,
+    REPORT_CAT,
+]
+
+ALL_STATUSES = ("Available", "Borrowed", "Maintenance")
+
+
+def clean_resource_form(form):
+    return {
+        "name": form.get("name", "").strip(),
+        "category": form.get("category", ""),
+        "description": form.get("description", "").strip(),
+        "academic_year": form.get("academic_year", "").strip(),
+        "rfid": form.get("rfid", "").strip().upper(),
+        "status": form.get("status", "Available"),
+    }
+
+
+def validate_resource(data):
+    if not data["name"]:
+        return "Resource name is required."
+    if data["category"] not in STAFF_CATEGORIES:
+        return "Please choose a valid category."
+    if data["academic_year"] and not re.fullmatch(r"\d{4}", data["academic_year"]):
+        return "Academic year must be 4 digits, for example 2026."
+    return None
+
+
+def friendly_db_error(e):
+    if "EquipmentRFID" in str(e):
+        return "This RFID UID is already assigned to another resource."
+    return str(e)
+
+
 @app.route("/staff")
 def staff_home():
-    return role_page("Staff", "Staff Dashboard")
+
+    if session.get("role") != "Staff":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+
+    total_resources = conn.execute(
+        "SELECT COUNT(*) FROM Equipment"
+    ).fetchone()[0]
+
+    available_resources = conn.execute(
+        "SELECT COUNT(*) FROM Equipment WHERE Status = 'Available'"
+    ).fetchone()[0]
+
+    borrowed_resources = conn.execute(
+        "SELECT COUNT(*) FROM Equipment WHERE Status = 'Borrowed'"
+    ).fetchone()[0]
+
+    printed_reports = conn.execute(
+        "SELECT COUNT(*) FROM Equipment WHERE Category IN (?, ?)",
+        (PAPER_CAT, REPORT_CAT)
+    ).fetchone()[0]
+
+    recent_resources = conn.execute(
+        """SELECT EquipmentName, Category, Status
+           FROM Equipment
+           ORDER BY EquipmentID DESC
+           LIMIT 5"""
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "staff/dashboard.html",
+        staff_name=session["name"],
+        total_resources=total_resources,
+        available_resources=available_resources,
+        borrowed_resources=borrowed_resources,
+        printed_reports=printed_reports,
+        recent_resources=recent_resources
+    )
+
+
+# VIEW ALL RESOURCES
+
+@app.route("/staff/resources")
+def staff_resources():
+
+    if session.get("role") != "Staff":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    resources = conn.execute(
+        "SELECT * FROM Equipment ORDER BY EquipmentID"
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "staff/resources.html",
+        resources=resources,
+        staff_name=session["name"]
+    )
+
+
+# ADD RESOURCE
+
+@app.route("/staff/resources/add", methods=["GET", "POST"])
+def staff_add_resource():
+
+    if session.get("role") != "Staff":
+        return redirect(url_for("login"))
+
+    error = None
+    form = {}
+
+    if request.method == "POST":
+        form = clean_resource_form(request.form)
+        error = validate_resource(form)
+
+        if not error:
+            conn = sqlite3.connect(DB_PATH)
+            try:
+                conn.execute(
+                    """INSERT INTO Equipment
+                       (EquipmentName, Category, Description,
+                        AcademicYear, EquipmentRFID, Status, UploadedBy)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        form["name"],
+                        form["category"],
+                        form["description"],
+                        form["academic_year"] or None,
+                        form["rfid"] or None,
+                        "Available",
+                        session["user_id"]
+                    )
+                )
+                conn.commit()
+                return redirect(url_for("staff_resources"))
+
+            except sqlite3.IntegrityError as e:
+                error = friendly_db_error(e)
+
+            finally:
+                conn.close()
+
+    return render_template(
+        "staff/add_resource.html",
+        staff_name=session["name"],
+        categories=STAFF_CATEGORIES,
+        form=form,
+        error=error
+    )
+
+
+# EDIT RESOURCE
+
+@app.route("/staff/resources/edit/<int:equipment_id>",
+           methods=["GET", "POST"])
+def staff_edit_resource(equipment_id):
+
+    if session.get("role") != "Staff":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        resource = conn.execute(
+            "SELECT * FROM Equipment WHERE EquipmentID = ?",
+            (equipment_id,)
+        ).fetchone()
+
+        if resource is None:
+            abort(404)
+
+        error = None
+
+        if request.method == "POST":
+            data = clean_resource_form(request.form)
+            error = validate_resource(data)
+
+            if not error and data["status"] not in ALL_STATUSES:
+                error = "Invalid status."
+
+            if not error and data["status"] == "Borrowed":
+                active = conn.execute(
+                    """SELECT 1 FROM BorrowingRecord
+                       WHERE EquipmentID = ? AND BorrowStatus = 'Borrowed'""",
+                    (equipment_id,)
+                ).fetchone()
+                if not active:
+                    error = ("Borrowed is set automatically when a "
+                             "student borrows the item.")
+
+            if not error:
+                try:
+                    conn.execute(
+                        """UPDATE Equipment
+                           SET EquipmentName = ?,
+                               Category = ?,
+                               Description = ?,
+                               AcademicYear = ?,
+                               EquipmentRFID = ?,
+                               Status = ?
+                           WHERE EquipmentID = ?""",
+                        (
+                            data["name"],
+                            data["category"],
+                            data["description"],
+                            data["academic_year"] or None,
+                            data["rfid"] or None,
+                            data["status"],
+                            equipment_id
+                        )
+                    )
+                    conn.commit()
+                    return redirect(url_for("staff_resources"))
+
+                except sqlite3.IntegrityError as e:
+                    error = friendly_db_error(e)
+
+            # keep what the user typed so the form is not reset
+            resource = {
+                "EquipmentID": equipment_id,
+                "EquipmentName": data["name"],
+                "Category": data["category"],
+                "Description": data["description"],
+                "AcademicYear": data["academic_year"],
+                "EquipmentRFID": data["rfid"],
+                "Status": data["status"],
+            }
+
+        return render_template(
+            "staff/edit_resource.html",
+            resource=resource,
+            staff_name=session["name"],
+            categories=STAFF_CATEGORIES,
+            error=error
+        )
+
+    finally:
+        conn.close()
+
+
+# PRINTED PROJECT REPORTS
+
+@app.route("/staff/reports")
+def staff_reports():
+
+    if session.get("role") != "Staff":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    reports = conn.execute(
+        """SELECT *
+           FROM Equipment
+           WHERE Category IN (?, ?)
+           ORDER BY EquipmentID""",
+        (PAPER_CAT, REPORT_CAT)
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "staff/printed_reports.html",
+        reports=reports,
+        staff_name=session["name"]
+    )
+
+# ========== END STAFF RESOURCE MANAGEMENT(Shoug) ==========
 
 # ========== ADMIN PAGES (Lara) ==========
 @app.route("/admin")
