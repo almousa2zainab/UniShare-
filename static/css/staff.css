@@ -718,3 +718,19 @@ display: inline-block;
 .scan-rfid-btn:hover {
     opacity: 0.9;
 }
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.sidebar-nav {
+    flex-shrink: 0;
+}
+
+.sidebar-footer {
+    position: static;
+    margin-top: auto;
+    padding-top: 24px;
+    flex-shrink: 0;
+}
