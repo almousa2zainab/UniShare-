@@ -207,8 +207,8 @@ def staff_home():
 
     conn = sqlite3.connect(DB_PATH)
 
-    total_resources = conn.execute(
-        "SELECT COUNT(*) FROM Equipment"
+    resource_types = conn.execute(
+        "SELECT COUNT(DISTINCT Category) FROM Equipment"
     ).fetchone()[0]
 
     available_resources = conn.execute(
@@ -216,7 +216,7 @@ def staff_home():
     ).fetchone()[0]
 
     borrowed_resources = conn.execute(
-        "SELECT COUNT(*) FROM Equipment WHERE Status = 'Borrowed'"
+    "SELECT COUNT(*) FROM BorrowingRecord WHERE BorrowStatus = 'Borrowed'"
     ).fetchone()[0]
 
     printed_reports = conn.execute(
@@ -236,14 +236,41 @@ def staff_home():
     return render_template(
         "staff/dashboard.html",
         staff_name=session["name"],
-        total_resources=total_resources,
+        resource_types=resource_types,
         available_resources=available_resources,
         borrowed_resources=borrowed_resources,
         printed_reports=printed_reports,
         recent_resources=recent_resources
     )
 
+@app.route("/staff/borrowing-records")
+def staff_borrowing_records():
+    if session.get("role") != "Staff":
+        return redirect(url_for("login"))
 
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    transactions = conn.execute("""
+        SELECT
+            b.RecordID,
+            e.EquipmentName,
+            b.BorrowDate,
+            b.ExpectedReturnDate,
+            b.BorrowStatus
+        FROM BorrowingRecord b
+        JOIN Equipment e
+            ON b.EquipmentID = e.EquipmentID
+        ORDER BY b.RecordID DESC
+    """).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "staff/borrowing_records.html",
+        transactions=transactions,
+        staff_name=session["name"]
+    )
 # VIEW ALL RESOURCES
 
 @app.route("/staff/resources")

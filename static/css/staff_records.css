@@ -1,0 +1,67 @@
+/* Staff Borrowing Records */
+
+.transactions-section {
+    margin-top: 30px;
+}
+
+.transactions-table-container {
+    background: white;
+    border: 1px solid #E4E9F1;
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.transactions-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.transactions-table th {
+    padding: 16px;
+    text-align: left;
+    color: #77849A;
+    background: #F7F7FC;
+    font-weight: 600;
+}
+
+.transactions-table td {
+    padding: 18px 16px;
+    border-bottom: 1px solid #E4E9F1;
+    color: #202D42;
+}
+
+.transactions-table tbody tr:hover {
+    background: #F7F7FC;
+}
+
+.transactions-table .status.returned {
+    background: #ECFDF5;
+    color: #059669;
+}
+
+.transactions-table .status.borrowed {
+    background: #FFFBEB;
+    color: #D97706;
+}
+
+.transactions-table td:last-child {
+    color: #77849A;
+}
+
+.transactions-table tbody tr:last-child td {
+    border-bottom: none;
+}
+/* Keep dates on one line */
+.transactions-table th:nth-child(3),
+.transactions-table th:nth-child(4),
+.transactions-table td:nth-child(3),
+.transactions-table td:nth-child(4) {
+    white-space: nowrap;
+}
+
+.transactions-table {
+    min-width: 950px;
+}
