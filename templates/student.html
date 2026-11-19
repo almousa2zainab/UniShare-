@@ -5,6 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>UniShare - Student</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='student.css') }}">
+
+<style>
+  .borrowings-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 25px;
+  }
+
+  .borrowings-heading h1 {
+    margin-bottom: 8px;
+  }
+
+  .borrowings-table-wrap {
+    background: #FFFFFF;
+    border-radius: 16px;
+    overflow-x: auto;
+    box-shadow: 0 5px 20px rgba(32, 45, 66, 0.06);
+  }
+
+  .borrowings-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    min-width: 620px;
+  }
+
+  .borrowings-table th {
+    background: #F7F7FC;
+    color: #737B91;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 20px;
+    font-weight: 700;
+  }
+
+  .borrowings-table td {
+    padding: 20px;
+    border-top: 1px solid #EEEFF5;
+    color: #202D42;
+    font-size: 14px;
+  }
+
+  .borrowings-table td strong {
+    display: block;
+    color: #14285A;
+    margin-bottom: 5px;
+  }
+
+  .borrowing-id {
+    display: block;
+    color: #858BA0;
+    font-size: 12px;
+  }
+
+  .borrowing-status {
+    display: inline-block;
+    padding: 7px 13px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .borrowing-status.is-borrowed {
+    background: #FFF4D8;
+    color: #A87412;
+  }
+
+  .borrowing-status.is-returned {
+    background: #DFF8EB;
+    color: #168052;
+  }
+
+  .borrowing-status.is-other {
+    background: #ECEBFF;
+    color: #5742BB;
+  }
+
+  .borrowings-empty {
+    text-align: center;
+    padding: 45px 20px !important;
+    color: #858BA0 !important;
+  }
+
+  .borrowings-note {
+    margin-top: 18px;
+    padding: 18px 22px;
+    background: #F3F1FF;
+    border: 1px solid #E5E0FF;
+    border-radius: 12px;
+    color: #626B81;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .borrowings-note strong {
+    color: #5742BB;
+  }
+
+  @media (max-width: 650px) {
+    .borrowings-heading {
+      flex-direction: column;
+    }
+  }
+</style>
+
 </head>
 <body>
 
@@ -16,6 +123,7 @@
       <button class="tab" data-view="home">Home</button>
       <button class="tab" data-view="resources">Equipment &amp; Resources</button>
       <button class="tab" data-view="projects">AI Graduation Projects</button>
+      <button class="tab" data-view="borrowings">My Borrowings</button>
     </nav>
     <div class="user">{{ name }} <a href="{{ url_for('logout') }}">Log out</a></div>
   </div>
@@ -131,11 +239,82 @@
     <div class="empty" id="empty-projects">No graduation reports match your search.</div>
   </section>
 
+
+<!-- MY BORROWINGS -->
+<section class="view" id="view-borrowings">
+
+  <div class="borrowings-heading">
+    <div>
+      <h1>My Borrowings</h1>
+      <p class="lead">
+        Track resources you have borrowed and their return dates.
+      </p>
+    </div>
+
+    <button class="btn go" data-view="resources">
+      Browse Resources +
+    </button>
+  </div>
+
+  <div class="borrowings-table-wrap">
+    <table class="borrowings-table">
+      <thead>
+        <tr>
+          <th>RESOURCE</th>
+          <th>BORROWED ON</th>
+          <th>DUE DATE</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for record in borrowings %}
+        <tr>
+          <td>
+            <strong>{{ record.EquipmentName }}</strong>
+            <span class="borrowing-id">
+              Borrowing #{{ record.RecordID }}
+            </span>
+          </td>
+
+          <td>{{ record.BorrowDate or '—' }}</td>
+
+          <td>{{ record.ExpectedReturnDate or '—' }}</td>
+
+          <td>
+            <span class="borrowing-status
+              {% if record.BorrowStatus == 'Borrowed' %}is-borrowed
+              {% elif record.BorrowStatus == 'Returned' %}is-returned
+              {% else %}is-other{% endif %}">
+              {{ record.BorrowStatus }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="borrowings-empty">
+            You have no borrowing records yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="borrowings-note">
+    <strong>Return process:</strong>
+    To return a borrowed resource, bring it to a staff member.
+    Staff will verify the equipment using RFID and confirm
+    the return in the system.
+  </div>
+
+</section>
+
 </main>
 
 <script>
   // ----- Tabs (the address bar keeps #home / #resources / #projects) -----
-  const views = ["home", "resources", "projects"];
+  const views = ["home", "resources", "projects", "borrowings"];
   function show(view) {
     if (!views.includes(view)) view = "home";
     views.forEach(v => {
@@ -180,12 +359,21 @@
   setupFilter("resources");
   setupFilter("projects");
 
-  // ----- Borrow button: PLACEHOLDER until Layan's Borrowing function is ready -----
-  document.querySelectorAll(".borrow").forEach(b =>
-    b.addEventListener("click", () => {
-      // Later: send b.dataset.id to Layan's borrow route
-      alert("Borrow requests will be available soon.");
-    }));
+
+  // ----- Borrow button: open borrowing page -----
+document.querySelectorAll(".borrow").forEach(button => {
+  button.addEventListener("click", () => {
+    const equipmentId = button.dataset.id;
+
+    if (!equipmentId) {
+      alert("Equipment ID is missing.");
+      return;
+    }
+
+    window.location.href = `/borrow/${encodeURIComponent(equipmentId)}`;
+  });
+});
+
 </script>
 </body>
 </html>
