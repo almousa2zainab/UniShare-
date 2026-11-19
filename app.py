@@ -244,7 +244,7 @@ def staff_home():
     )
 
 
-# VIEW ALL RESOURCES
+# VIEW ALL RESOURCES (search + filters)
 
 @app.route("/staff/resources")
 def staff_resources():
@@ -252,19 +252,44 @@ def staff_resources():
     if session.get("role") != "Staff":
         return redirect(url_for("login"))
 
+    q = request.args.get("q", "").strip()
+    status = request.args.get("status", "")
+    category = request.args.get("category", "")
+
+    sql = "SELECT * FROM Equipment WHERE 1=1"
+    params = []
+
+    if q:
+        like = f"%{q}%"
+        sql += """ AND (EquipmentName LIKE ?
+                    OR Description LIKE ?
+                    OR EquipmentRFID LIKE ?)"""
+        params += [like, like, like]
+
+    if status in ALL_STATUSES:
+        sql += " AND Status = ?"
+        params.append(status)
+
+    if category in STAFF_CATEGORIES:
+        sql += " AND Category = ?"
+        params.append(category)
+
+    sql += " ORDER BY EquipmentID"
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-
-    resources = conn.execute(
-        "SELECT * FROM Equipment ORDER BY EquipmentID"
-    ).fetchall()
-
+    resources = conn.execute(sql, params).fetchall()
     conn.close()
 
     return render_template(
         "staff/resources.html",
         resources=resources,
-        staff_name=session["name"]
+        staff_name=session["name"],
+        q=q,
+        status=status,
+        category=category,
+        statuses=ALL_STATUSES,
+        categories=STAFF_CATEGORIES
     )
 
 
@@ -409,7 +434,7 @@ def staff_edit_resource(equipment_id):
         conn.close()
 
 
-# PRINTED PROJECT REPORTS
+# PRINTED PROJECT REPORTS (search + filters)
 
 @app.route("/staff/reports")
 def staff_reports():
@@ -417,23 +442,47 @@ def staff_reports():
     if session.get("role") != "Staff":
         return redirect(url_for("login"))
 
+    q = request.args.get("q", "").strip()
+    status = request.args.get("status", "")
+    category = request.args.get("category", "")
+
+    report_categories = [PAPER_CAT, REPORT_CAT]
+
+    sql = "SELECT * FROM Equipment WHERE Category IN (?, ?)"
+    params = [PAPER_CAT, REPORT_CAT]
+
+    if q:
+        like = f"%{q}%"
+        sql += """ AND (EquipmentName LIKE ?
+                    OR Description LIKE ?
+                    OR EquipmentRFID LIKE ?
+                    OR AcademicYear LIKE ?)"""
+        params += [like, like, like, like]
+
+    if status in ALL_STATUSES:
+        sql += " AND Status = ?"
+        params.append(status)
+
+    if category in report_categories:
+        sql += " AND Category = ?"
+        params.append(category)
+
+    sql += " ORDER BY EquipmentID"
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-
-    reports = conn.execute(
-        """SELECT *
-           FROM Equipment
-           WHERE Category IN (?, ?)
-           ORDER BY EquipmentID""",
-        (PAPER_CAT, REPORT_CAT)
-    ).fetchall()
-
+    reports = conn.execute(sql, params).fetchall()
     conn.close()
 
     return render_template(
         "staff/printed_reports.html",
         reports=reports,
-        staff_name=session["name"]
+        staff_name=session["name"],
+        q=q,
+        status=status,
+        category=category,
+        statuses=ALL_STATUSES,
+        categories=report_categories
     )
 
 # ========== END STAFF RESOURCE MANAGEMENT(Shoug) ==========

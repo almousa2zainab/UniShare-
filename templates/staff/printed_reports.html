@@ -76,6 +76,51 @@
         </div>
 
 
+        <form method="get"
+              action="{{ url_for('staff_reports') }}"
+              class="search-form">
+
+            <input type="text"
+                   name="q"
+                   value="{{ q }}"
+                   placeholder="Search by title, description, year or RFID">
+
+            <select name="category">
+                <option value="">All types</option>
+                {% for c in categories %}
+                <option value="{{ c }}"
+                        {% if c == category %}selected{% endif %}>
+                    {% if c == 'Candidate printed research papers' %}
+                        Research Paper
+                    {% elif c == 'Printed AI / CS graduation reports' %}
+                        Graduation Report
+                    {% else %}
+                        {{ c }}
+                    {% endif %}
+                </option>
+                {% endfor %}
+            </select>
+
+            <select name="status">
+                <option value="">All statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}"
+                        {% if s == status %}selected{% endif %}>
+                    {{ s }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="add-resource-btn">Search</button>
+
+            {% if q or status or category %}
+            <a href="{{ url_for('staff_reports') }}"
+               class="reset-link">Reset</a>
+            {% endif %}
+
+        </form>
+
+
         <div class="transactions-table-container">
 
             <table class="transactions-table">
@@ -139,7 +184,11 @@
 
                     <tr>
                         <td colspan="7">
-                            No printed reports found.
+                            {% if q or status or category %}
+                                No reports match your search.
+                            {% else %}
+                                No printed reports found.
+                            {% endif %}
                         </td>
                     </tr>
 
