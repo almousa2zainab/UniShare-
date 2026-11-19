@@ -691,6 +691,124 @@ def admin_transactions():
         transactions=transactions,
         admin_name=session["name"]
     )
+
+@app.route("/admin/transactions/<int:record_id>/status", methods=["POST"])
+def update_transaction_status(record_id):
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    new_status = request.form.get("status")
+
+    if new_status not in ("Borrowed", "Returned"):
+        abort(400)
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        record = conn.execute(
+            """
+            SELECT EquipmentID, BorrowStatus
+            FROM BorrowingRecord
+            WHERE RecordID = ?
+            """,
+            (record_id,)
+        ).fetchone()
+
+        if record is None:
+            abort(404)
+
+        equipment_id = record["EquipmentID"]
+
+        if new_status == record["BorrowStatus"]:
+            return redirect(url_for("admin_transactions"))
+
+        if new_status == "Borrowed":
+            active = conn.execute(
+                """
+                SELECT 1
+                FROM BorrowingRecord
+                WHERE EquipmentID = ?
+                  AND BorrowStatus = 'Borrowed'
+                  AND RecordID != ?
+                """,
+                (equipment_id, record_id)
+            ).fetchone()
+
+            equipment = conn.execute(
+                "SELECT Status FROM Equipment WHERE EquipmentID = ?",
+                (equipment_id,)
+            ).fetchone()
+
+            if active or equipment is None or equipment["Status"] != "Available":
+                abort(409, "Resource is not available.")
+
+            conn.execute(
+                """
+                UPDATE BorrowingRecord
+                SET BorrowStatus = 'Borrowed',
+                    ActualReturnDate = NULL
+                WHERE RecordID = ?
+                """,
+                (record_id,)
+            )
+
+            conn.execute(
+                """
+                UPDATE Equipment
+                SET Status = 'Borrowed'
+                WHERE EquipmentID = ?
+                """,
+                (equipment_id,)
+            )
+
+        else:
+            conn.execute(
+                """
+                UPDATE BorrowingRecord
+                SET BorrowStatus = 'Returned',
+                    ActualReturnDate = COALESCE(
+                        ActualReturnDate, DATE('now', '+3 hours')
+                    )
+                WHERE RecordID = ?
+                """,
+                (record_id,)
+            )
+
+            active = conn.execute(
+                """
+                SELECT 1
+                FROM BorrowingRecord
+                WHERE EquipmentID = ?
+                  AND BorrowStatus = 'Borrowed'
+                """,
+                (equipment_id,)
+            ).fetchone()
+
+            if not active:
+                conn.execute(
+                    """
+                    UPDATE Equipment
+                    SET Status = 'Available'
+                    WHERE EquipmentID = ?
+                      AND Status = 'Borrowed'
+                    """,
+                    (equipment_id,)
+                )
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin_transactions"))
+
 @app.route("/admin/users")
 def admin_users():
     if session.get("role") != "Admin":
@@ -714,6 +832,7 @@ def admin_users():
         users=users,
         admin_name=session["name"]
     )
+
 @app.route("/admin/users/<int:user_id>/role", methods=["POST"])
 def update_user_role(user_id):
     if session.get("role") != "Admin":
@@ -735,6 +854,7 @@ def update_user_role(user_id):
     conn.close()
 
     return redirect(url_for("admin_users"))
+
 # ========== END ADMIN PAGES ==========
 if __name__ == "__main__":
     app.run(debug=True)
