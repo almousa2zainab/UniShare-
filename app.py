@@ -3,6 +3,8 @@ import re
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, abort
 from markupsafe import escape
+from datetime import datetime, timedelta
+from borrowing import borrow_equipment, return_equipment
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-random-text"
@@ -144,13 +146,41 @@ def student_home():
     }
     categories = sorted({i["Category"] for i in items})
 
+    # Get borrowing records for the logged-in student
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    borrowings = conn.execute(
+        """
+        SELECT
+            br.RecordID,
+            e.EquipmentName,
+            br.BorrowDate,
+            br.ExpectedReturnDate,
+            br.ActualReturnDate,
+            br.BorrowStatus
+        FROM BorrowingRecord AS br
+        JOIN Equipment AS e
+            ON br.EquipmentID = e.EquipmentID
+        WHERE br.UserID = ?
+        ORDER BY br.RecordID DESC
+        """,
+        (session["user_id"],)
+    ).fetchall()
+
+    conn.close()
+
+
+
     return render_template(
         "student.html",
         name=session["name"],
         items=items,
         counts=counts,
         categories=categories,
+        borrowings=borrowings,
     )
+
 # ============ END STUDENT PAGES ============
 
 
@@ -207,17 +237,21 @@ def staff_home():
 
     conn = sqlite3.connect(DB_PATH)
 
-    total_resources = conn.execute(
-        "SELECT COUNT(*) FROM Equipment"
+
+    resource_types = conn.execute(
+       "SELECT COUNT(DISTINCT Category) FROM Equipment"
     ).fetchone()[0]
+
 
     available_resources = conn.execute(
         "SELECT COUNT(*) FROM Equipment WHERE Status = 'Available'"
     ).fetchone()[0]
 
+
     borrowed_resources = conn.execute(
-        "SELECT COUNT(*) FROM Equipment WHERE Status = 'Borrowed'"
+        "SELECT COUNT(*) FROM BorrowingRecord WHERE BorrowStatus = 'Borrowed'"
     ).fetchone()[0]
+
 
     printed_reports = conn.execute(
         "SELECT COUNT(*) FROM Equipment WHERE Category IN (?, ?)",
@@ -236,11 +270,45 @@ def staff_home():
     return render_template(
         "staff/dashboard.html",
         staff_name=session["name"],
-        total_resources=total_resources,
+        resource_types=resource_types,
         available_resources=available_resources,
         borrowed_resources=borrowed_resources,
         printed_reports=printed_reports,
         recent_resources=recent_resources
+    )
+
+# ========== STAFF BORROWING RECORDS (Student 5) ==========
+# Displays borrowing records for Staff.
+# TODO: Student 3 - Connect the Return button workflow.
+# TODO: Student 7 - Integrate trusted RFID verification.
+
+@app.route("/staff/borrowing-records")
+def staff_borrowing_records():
+    if session.get("role") != "Staff":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    transactions = conn.execute("""
+        SELECT
+            b.RecordID,
+            e.EquipmentName,
+            b.BorrowDate,
+            b.ExpectedReturnDate,
+            b.BorrowStatus
+        FROM BorrowingRecord b
+        JOIN Equipment e
+            ON b.EquipmentID = e.EquipmentID
+        ORDER BY b.RecordID DESC
+    """).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "staff/borrowing_records.html",
+        transactions=transactions,
+        staff_name=session["name"]
     )
 
 
@@ -515,7 +583,7 @@ def admin_home():
     resource_types = conn.execute(
         "SELECT COUNT(DISTINCT Category) FROM Equipment"
     ).fetchone()[0]
-    # Get 3 resources for the dashboard snapshot 
+    # Get 3 resources for the dashboard snapshot
     resources = conn.execute(
     """SELECT EquipmentName, Category, Status
        FROM Equipment
@@ -713,6 +781,124 @@ def admin_transactions():
         transactions=transactions,
         admin_name=session["name"]
     )
+
+@app.route("/admin/transactions/<int:record_id>/status", methods=["POST"])
+def update_transaction_status(record_id):
+    if session.get("role") != "Admin":
+        return redirect(url_for("login"))
+
+    new_status = request.form.get("status")
+
+    if new_status not in ("Borrowed", "Returned"):
+        abort(400)
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        record = conn.execute(
+            """
+            SELECT EquipmentID, BorrowStatus
+            FROM BorrowingRecord
+            WHERE RecordID = ?
+            """,
+            (record_id,)
+        ).fetchone()
+
+        if record is None:
+            abort(404)
+
+        equipment_id = record["EquipmentID"]
+
+        if new_status == record["BorrowStatus"]:
+            return redirect(url_for("admin_transactions"))
+
+        if new_status == "Borrowed":
+            active = conn.execute(
+                """
+                SELECT 1
+                FROM BorrowingRecord
+                WHERE EquipmentID = ?
+                  AND BorrowStatus = 'Borrowed'
+                  AND RecordID != ?
+                """,
+                (equipment_id, record_id)
+            ).fetchone()
+
+            equipment = conn.execute(
+                "SELECT Status FROM Equipment WHERE EquipmentID = ?",
+                (equipment_id,)
+            ).fetchone()
+
+            if active or equipment is None or equipment["Status"] != "Available":
+                abort(409, "Resource is not available.")
+
+            conn.execute(
+                """
+                UPDATE BorrowingRecord
+                SET BorrowStatus = 'Borrowed',
+                    ActualReturnDate = NULL
+                WHERE RecordID = ?
+                """,
+                (record_id,)
+            )
+
+            conn.execute(
+                """
+                UPDATE Equipment
+                SET Status = 'Borrowed'
+                WHERE EquipmentID = ?
+                """,
+                (equipment_id,)
+            )
+
+        else:
+            conn.execute(
+                """
+                UPDATE BorrowingRecord
+                SET BorrowStatus = 'Returned',
+                    ActualReturnDate = COALESCE(
+                        ActualReturnDate, DATE('now', '+3 hours')
+                    )
+                WHERE RecordID = ?
+                """,
+                (record_id,)
+            )
+
+            active = conn.execute(
+                """
+                SELECT 1
+                FROM BorrowingRecord
+                WHERE EquipmentID = ?
+                  AND BorrowStatus = 'Borrowed'
+                """,
+                (equipment_id,)
+            ).fetchone()
+
+            if not active:
+                conn.execute(
+                    """
+                    UPDATE Equipment
+                    SET Status = 'Available'
+                    WHERE EquipmentID = ?
+                      AND Status = 'Borrowed'
+                    """,
+                    (equipment_id,)
+                )
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin_transactions"))
+
 @app.route("/admin/users")
 def admin_users():
     if session.get("role") != "Admin":
@@ -736,6 +922,7 @@ def admin_users():
         users=users,
         admin_name=session["name"]
     )
+
 @app.route("/admin/users/<int:user_id>/role", methods=["POST"])
 def update_user_role(user_id):
     if session.get("role") != "Admin":
@@ -757,6 +944,202 @@ def update_user_role(user_id):
     conn.close()
 
     return redirect(url_for("admin_users"))
+
 # ========== END ADMIN PAGES ==========
+
+
+# ========== BORROW EQUIPMENT PAGE (Student 3) ==========
+
+@app.route("/borrow/<int:equipment_id>")
+def borrow_page(equipment_id):
+    if session.get("role") != "Student":
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        equipment = conn.execute(
+            """SELECT EquipmentID, EquipmentName, Category,
+                      Description, Status
+               FROM Equipment
+               WHERE EquipmentID = ?""",
+            (equipment_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if equipment is None:
+        return "Equipment not found.", 404
+
+    if equipment["Status"] != "Available":
+        return "Equipment is not available.", 409
+
+    today = datetime.now().date()
+
+    return render_template(
+        "borrow_equipment.html",
+        equipment=equipment,
+        name=session.get("name"),
+        min_date=(today + timedelta(days=1)).isoformat(),
+        max_date=(today + timedelta(days=14)).isoformat()
+    )
+
+
+@app.route("/borrow/start", methods=["POST"])
+def start_borrow():
+    # Only students can start borrowing
+    if session.get("role") != "Student":
+        return {"success": False, "message": "Unauthorized."}, 403
+
+    data = request.get_json(silent=True) or {}
+
+    equipment_id = data.get("equipment_id")
+    expected_return_date = data.get("expected_return_date")
+
+    # Validate equipment ID
+    try:
+        equipment_id = int(equipment_id)
+        if equipment_id <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return {
+            "success": False,
+            "message": "Invalid equipment ID."
+        }, 400
+
+    # Validate return date
+    try:
+        selected_date = datetime.strptime(
+            expected_return_date, "%Y-%m-%d"
+        ).date()
+    except (TypeError, ValueError):
+        return {
+            "success": False,
+            "message": "Please select a valid return date."
+        }, 400
+
+    today = datetime.now().date()
+
+    if not today + timedelta(days=1) <= selected_date <= today + timedelta(days=14):
+        return {
+            "success": False,
+            "message": "Return date must be within 1 to 14 days."
+        }, 400
+
+    # Check equipment availability
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        equipment = conn.execute(
+            """SELECT Status
+               FROM Equipment
+               WHERE EquipmentID = ?""",
+            (equipment_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if equipment is None:
+        return {
+            "success": False,
+            "message": "Equipment not found."
+        }, 404
+
+    if equipment["Status"] != "Available":
+        return {
+            "success": False,
+            "message": "Equipment is not available."
+        }, 409
+
+    # Save pending borrowing details for RFID integration
+    session["pending_borrow"] = {
+        "equipment_id": equipment_id,
+        "expected_return_date": selected_date.isoformat()
+    }
+
+    return {
+        "success": True,
+        "message": "Borrowing request is ready. Waiting for RFID scan."
+    }
+
+
+# BORROWING INTEGRATION - Student 3
+#
+# TODO: Student 7 - RFID Integration
+# Call this function only after a trusted RFID scan.
+# Do NOT accept RFID values directly from the browser.
+# Ensure the scan belongs to the correct student request.
+
+def complete_borrow_after_rfid(scanned_rfid):
+    """Complete a pending borrowing after trusted RFID verification."""
+
+    if session.get("role") != "Student":
+        return False, "Unauthorized."
+
+    user_id = session.get("user_id")
+    if not user_id:
+        return False, "User session not found."
+
+    pending = session.get("pending_borrow")
+    if not pending:
+        return False, "No pending borrowing request."
+
+    if not isinstance(scanned_rfid, str) or not scanned_rfid.strip():
+        return False, "RFID scan is required."
+
+    success, message = borrow_equipment(
+        user_id,
+        pending["equipment_id"],
+        scanned_rfid,
+        pending["expected_return_date"]
+    )
+
+    if success:
+        session.pop("pending_borrow", None)
+
+    return success, message
+
+# RETURN INTEGRATION - Student 3
+#
+# TODO: Student 3
+# Connect the Return buttons from Staff Borrowings
+# and Admin Transactions to the RFID verification flow.
+# Add a protected Flask route for starting the return.
+#
+# TODO: Student 7
+# Integrate the physical RFID reader and securely
+# deliver the scan result to this function.
+#
+# NOTE:
+# Students 5 and 6 only provide the UI and Return buttons.
+# They do NOT implement the return functionality.
+
+def complete_return_after_rfid(record_id, scanned_rfid):
+    """
+    Complete an equipment return after trusted RFID verification.
+    """
+
+    if session.get("role") not in ("Staff", "Admin"):
+        return False, "Unauthorized."
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return False, "User session not found."
+
+    if not isinstance(scanned_rfid, str) or not scanned_rfid.strip():
+        return False, "RFID scan is required."
+
+    success, message = return_equipment(
+        user_id,
+        record_id,
+        scanned_rfid
+    )
+
+    return success, message
+
+
 if __name__ == "__main__":
     app.run(debug=True)

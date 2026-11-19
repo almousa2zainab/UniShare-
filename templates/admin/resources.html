@@ -61,6 +61,16 @@
     </a>
 </div>
 
+<div class="resource-search">
+    <input
+        type="text"
+        id="equipmentSearch"
+        placeholder="Search by equipment name..."
+        oninput="searchEquipment()"
+        autocomplete="off"
+    >
+</div>
+
     <div class="resource-grid">
 
         {% for resource in resources %}
@@ -99,5 +109,24 @@
 
 </section>
 </main>
+
+<script>
+function searchEquipment() {
+    const search = document.getElementById("equipmentSearch")
+        .value.toLowerCase().trim();
+
+    const cards = document.querySelectorAll(".resource-card");
+
+    cards.forEach(card => {
+        const equipmentName = card.querySelector("h3")
+            .textContent.toLowerCase();
+
+        card.style.display = equipmentName.includes(search)
+            ? ""
+            : "none";
+    });
+}
+</script>
+
 </body>
 </html>

@@ -30,6 +30,10 @@
                 Resource Management
             </a>
 
+            <a href="{{ url_for('staff_borrowing_records') }}">
+                Borrowing Records
+            </a>
+
             <a href="{{ url_for('staff_reports') }}">
                 Printed Project Reports
             </a>
@@ -73,9 +77,9 @@
         <div class="stats-grid">
 
             <div class="stat-card">
-                <p>Total Resources</p>
-                <h2>{{ total_resources }}</h2>
-                <span>Registered resources</span>
+               <p>Resource Types</p>
+               <h2>{{ resource_types }}</h2>
+               <span>Resource categories</span>
             </div>
 
             <div class="stat-card">
@@ -175,6 +179,19 @@
                         Open →
                     </a>
                 </div>
+
+                <div class="resource-card">
+                    <div>
+                       <h3>Borrowing Records</h3>
+                       <p>View borrowing and return transactions.</p>
+                    </div>
+
+                    <a href="{{ url_for('staff_borrowing_records') }}">
+                       Open →
+                    </a>
+               </div>
+
+
 
 
                 <div class="resource-card">

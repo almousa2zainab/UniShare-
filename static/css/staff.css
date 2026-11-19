@@ -718,7 +718,6 @@ display: inline-block;
 .scan-rfid-btn:hover {
     opacity: 0.9;
 }
-
 .search-form {
     display: flex;
     flex-wrap: wrap;
@@ -754,4 +753,21 @@ display: inline-block;
 .search-form .reset-link {
     font-size: 14px;
     text-decoration: none;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.sidebar-nav {
+    flex-shrink: 0;
+}
+
+.sidebar-footer {
+    position: static;
+    margin-top: auto;
+    padding-top: 24px;
+    flex-shrink: 0;
 }

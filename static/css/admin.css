@@ -525,3 +525,64 @@ display: inline-block;
 .role-form .edit-resource-btn {
     cursor: pointer;
 }
+
+/* Edit Transaction Button */
+.transactions-table .edit-btn {
+    background-color: #ede9fe;
+    color: #6744c6;
+    border: 1px solid #ddd6fe;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.transactions-table .edit-btn:hover {
+    background-color: #ddd6fe;
+}
+
+/* Status Dropdown */
+.transactions-table select[name="status"] {
+    padding: 8px 10px;
+    border: 1px solid #ddd6fe;
+    border-radius: 8px;
+    background: white;
+    color: #40376b;
+    font-size: 14px;
+    margin-bottom: 6px;
+    outline: none;
+}
+
+.transactions-table select[name="status"]:focus {
+    border-color: #6744c6;
+}
+
+/* Resource Management - Live Search */
+.resource-search {
+    margin: 0 0 20px;
+}
+
+.resource-search input {
+    width: 100%;
+    max-width: 380px;
+    padding: 12px 16px;
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #40376b;
+    font-size: 14px;
+    box-sizing: border-box;
+    outline: none;
+    transition: 0.2s ease;
+}
+
+.resource-search input:focus {
+    border-color: #6744c6;
+    box-shadow: 0 0 0 3px rgba(103, 68, 198, 0.1);
+}
+
+.resource-search input::placeholder {
+    color: #9ca3af;
+}

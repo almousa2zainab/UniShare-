@@ -1,0 +1,234 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Borrow Equipment - UniShare</title>
+
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='student.css') }}">
+
+  <style>
+    .borrow-container {
+      max-width: 850px;
+      margin: 45px auto;
+      padding: 0 20px;
+    }
+
+    .borrow-card {
+      background: white;
+      padding: 28px;
+      border-radius: 14px;
+      margin: 20px 0;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+    }
+
+    .borrow-card h2 {
+      color: #5742BB;
+      margin-top: 0;
+    }
+
+    .detail {
+      margin: 14px 0;
+      color: #202D42;
+    }
+
+    .detail strong {
+      margin-right: 10px;
+    }
+
+    .date-input {
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border: 1px solid #DDD9EF;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+
+    .rfid-box {
+      background: #ECEBFF;
+      text-align: center;
+      padding: 30px;
+      border-radius: 12px;
+      margin-top: 20px;
+      color: #5742BB;
+    }
+
+    .confirm-btn {
+      background: #5742BB;
+      color: white;
+      border: none;
+      padding: 13px 25px;
+      border-radius: 8px;
+      width: 100%;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+
+    .confirm-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <img src="{{ url_for('static', filename='images/logo.png') }}"
+         alt="UniShare">
+
+    <nav class="tabs">
+      <a href="{{ url_for('student_home') }}">
+        Back to Resources
+      </a>
+    </nav>
+
+    <div class="user">{{ name }}</div>
+  </div>
+</header>
+
+<main class="borrow-container">
+
+  <h1>Borrow Equipment</h1>
+  <p>Review the equipment details before borrowing.</p>
+
+  <div class="borrow-card">
+    <h2>Equipment Details</h2>
+
+    <div class="detail">
+      <strong>Name:</strong>
+      {{ equipment.EquipmentName }}
+    </div>
+
+    <div class="detail">
+      <strong>Equipment ID:</strong>
+      {{ equipment.EquipmentID }}
+    </div>
+
+    <div class="detail">
+      <strong>Category:</strong>
+      {{ equipment.Category }}
+    </div>
+
+    <div class="detail">
+      <strong>Status:</strong>
+      {{ equipment.Status }}
+    </div>
+
+    <div class="detail">
+      <strong>Description:</strong>
+      {{ equipment.Description or 'No description available.' }}
+    </div>
+  </div>
+
+  <div class="borrow-card">
+    <h2>Borrowing Information</h2>
+
+    <label for="return-date">
+      Expected Return Date
+    </label>
+
+    <input
+      type="date"
+      id="return-date"
+      class="date-input"
+      min="{{ min_date }}"
+      max="{{ max_date }}"
+      required
+    >
+
+    <p>Maximum borrowing period: 14 days.</p>
+  </div>
+
+  <div class="borrow-card">
+    <h2>RFID Verification</h2>
+
+    <p>
+      Scan the equipment RFID tag using the
+      connected Arduino RFID reader.
+    </p>
+
+    <div class="rfid-box">
+      <h3>Waiting for RFID Scan...</h3>
+      <p id="rfid-status">
+        No RFID tag detected yet.
+      </p>
+    </div>
+
+    <button
+  type="button"
+  class="confirm-btn"
+  id="start-borrow"
+  data-equipment-id="{{ equipment.EquipmentID }}"
+>
+  Start RFID Verification
+</button>
+
+  </div>
+
+</main>
+
+
+<script>
+  const startButton = document.getElementById("start-borrow");
+  const returnDate = document.getElementById("return-date");
+  const rfidStatus = document.getElementById("rfid-status");
+
+  startButton.addEventListener("click", async function () {
+
+    if (!returnDate.value || !returnDate.checkValidity()) {
+      returnDate.reportValidity();
+      return;
+    }
+
+    const equipmentId = startButton.dataset.equipmentId;
+
+    startButton.disabled = true;
+    rfidStatus.textContent = "Preparing borrowing request...";
+
+    try {
+      const response = await fetch("/borrow/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          equipment_id: Number(equipmentId),
+          expected_return_date: returnDate.value
+        })
+      });
+
+      const responseText = await response.text();
+      console.log("Borrow response status:", response.status);
+      console.log("Borrow response body:", responseText);
+
+      const result = JSON.parse(responseText);
+
+      if (response.ok && result.success) {
+        rfidStatus.textContent =
+          "Request ready. Waiting for RFID scan...";
+
+        startButton.textContent = "Waiting for RFID";
+        returnDate.disabled = true;
+
+      } else {
+        rfidStatus.textContent =
+          result.message || "Could not start borrowing.";
+        startButton.disabled = false;
+      }
+
+    } catch (error) {
+      rfidStatus.textContent =
+        "Connection error. Please try again.";
+      startButton.disabled = false;
+    }
+
+  });
+</script>
+
+</body>
+</html>
