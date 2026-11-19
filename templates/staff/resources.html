@@ -76,6 +76,45 @@
         </div>
 
 
+        <form method="get"
+              action="{{ url_for('staff_resources') }}"
+              class="search-form">
+
+            <input type="text"
+                   name="q"
+                   value="{{ q }}"
+                   placeholder="Search by name, description or RFID">
+
+            <select name="category">
+                <option value="">All categories</option>
+                {% for c in categories %}
+                <option value="{{ c }}"
+                        {% if c == category %}selected{% endif %}>
+                    {{ c }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <select name="status">
+                <option value="">All statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s }}"
+                        {% if s == status %}selected{% endif %}>
+                    {{ s }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="add-resource-btn">Search</button>
+
+            {% if q or status or category %}
+            <a href="{{ url_for('staff_resources') }}"
+               class="reset-link">Reset</a>
+            {% endif %}
+
+        </form>
+
+
         <div class="transactions-table-container">
 
             <table class="transactions-table">
@@ -133,7 +172,11 @@
 
                     <tr>
                         <td colspan="6">
-                            No resources registered yet.
+                            {% if q or status or category %}
+                                No resources match your search.
+                            {% else %}
+                                No resources registered yet.
+                            {% endif %}
                         </td>
                     </tr>
 
