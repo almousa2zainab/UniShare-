@@ -66,6 +66,7 @@
                     <th>Expected Return</th>
                     <th>Actual Return</th>
                     <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
 
@@ -87,6 +88,15 @@
                             {{ transaction["BorrowStatus"] }}
                         </span>
                     </td>
+                    
+                 
+<td>
+    <button type="button" class="edit-btn">
+        Edit
+    </button>
+</td>
+
+
                 </tr>
 
                 {% endfor %}
