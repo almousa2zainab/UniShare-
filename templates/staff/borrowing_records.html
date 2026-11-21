@@ -61,6 +61,7 @@
                             <th>Due Date</th>
                             <th>Status</th>
                             <th>RFID Verification</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
 
@@ -77,10 +78,13 @@
                                 </span>
                             </td>
                             <td>Not available</td>
+                            <td>
+                               <button type="button" class="edit-btn">Edit</button>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6">
+                            <td colspan="7">
                                 No borrowing records found.
                             </td>
                         </tr>
