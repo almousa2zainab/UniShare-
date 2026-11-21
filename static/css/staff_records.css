@@ -65,3 +65,17 @@
 .transactions-table {
     min-width: 950px;
 }
+.edit-btn {
+    background-color: #eee9ff;
+    color: #6246a3;
+    border: 1px solid #ded5f5;
+    border-radius: 9px;
+    padding: 9px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-btn:hover {
+    background-color: #e4dcfa;
+}
