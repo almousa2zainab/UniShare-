@@ -51,6 +51,41 @@
         </div>
 
         <section class="transactions-section">
+
+<!-- Student 3 - Search and filter borrowing records -->
+<div class="records-filters">
+
+    <input
+        type="text"
+        id="recordSearch"
+        placeholder="Search by equipment or record ID"
+    >
+
+
+    <select id="dateFilter">
+        <option value="">All dates</option>
+        <option value="today">Today</option>
+        <option value="week">Last 7 days</option>
+        <option value="month">Last 30 days</option>
+    </select>
+
+
+    <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="Borrowed">Borrowed</option>
+        <option value="Returned">Returned</option>
+    </select>
+
+    <button type="button" id="searchButton">
+        Search
+    </button>
+
+    <button type="button" id="resetButton" hidden>
+        Reset
+    </button>
+
+</div>
+
             <div class="transactions-table-container">
                 <table class="transactions-table">
                     <thead>
@@ -67,7 +102,7 @@
 
                     <tbody>
                         {% for transaction in transactions %}
-                        <tr>
+                        <tr data-category="{{ transaction['Category']|default('', true) }}">
                             <td>#{{ transaction["RecordID"] }}</td>
                             <td>{{ transaction["EquipmentName"] }}</td>
                             <td>{{ transaction["BorrowDate"] or "-" }}</td>
@@ -79,7 +114,14 @@
                             </td>
                             <td>Not available</td>
                             <td>
-                               <button type="button" class="edit-btn">Edit</button>
+                               {% if transaction["BorrowStatus"] == "Borrowed" %}
+                                <a href="{{ url_for('return_verification', record_id=transaction['RecordID']) }}"
+                                    class="edit-btn">
+                                    Return
+                                </a>
+                                {% else %}
+                                     <span>—</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% else %}
@@ -94,6 +136,99 @@
             </div>
         </section>
     </main>
+
+
+<script>
+    const recordSearch = document.getElementById("recordSearch");
+    const statusFilter = document.getElementById("statusFilter");
+    const dateFilter = document.getElementById("dateFilter");
+    const searchButton = document.getElementById("searchButton");
+    const resetButton = document.getElementById("resetButton");
+
+    function filterRecords() {
+        const search = recordSearch.value.trim().toLowerCase();
+        const status = statusFilter.value.toLowerCase();
+        const dateRange = dateFilter.value;
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const rows = document.querySelectorAll(
+            ".transactions-table tbody tr"
+        );
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll("td");
+
+            // Ignore the empty-table message row
+            if (cells.length < 7) return;
+
+            const recordId = cells[0].textContent.toLowerCase();
+            const equipment = cells[1].textContent.toLowerCase();
+            const borrowedDate = cells[2].textContent.trim();
+            const rowStatus = cells[4].textContent.trim().toLowerCase();
+
+            const matchesSearch =
+                recordId.includes(search) ||
+                equipment.includes(search);
+
+            const matchesStatus =
+                !status || rowStatus === status;
+
+            let matchesDate = true;
+
+            if (dateRange) {
+                const dateText = borrowedDate.slice(0, 10);
+                const date = /^\d{4}-\d{2}-\d{2}$/.test(dateText)
+                    ? new Date(dateText + "T00:00:00")
+                    : new Date(NaN);
+
+                if (Number.isNaN(date.getTime())) {
+                    matchesDate = false;
+                } else {
+                    const daysDifference = Math.floor(
+                        (now - date) / (1000 * 60 * 60 * 24)
+                    );
+
+                    if (dateRange === "today") {
+                        matchesDate = daysDifference === 0;
+                    } else if (dateRange === "week") {
+                        matchesDate =
+                            daysDifference >= 0 && daysDifference < 7;
+                    } else if (dateRange === "month") {
+                        matchesDate =
+                            daysDifference >= 0 && daysDifference < 30;
+                    }
+                }
+            }
+
+            row.style.display =
+                matchesSearch && matchesStatus && matchesDate
+                    ? ""
+                    : "none";
+        });
+    resetButton.hidden = !(search || status || dateRange);
+    }
+
+    searchButton.addEventListener("click", filterRecords);
+
+    recordSearch.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            filterRecords();
+        }
+    });
+
+    statusFilter.addEventListener("change", filterRecords);
+    dateFilter.addEventListener("change", filterRecords);
+    resetButton.addEventListener("click", () => {
+    recordSearch.value = "";
+    statusFilter.value = "";
+    dateFilter.value = "";
+
+    filterRecords();
+});
+</script>
+
 
 </body>
 </html>

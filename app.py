@@ -296,7 +296,8 @@ def staff_borrowing_records():
             e.EquipmentName,
             b.BorrowDate,
             b.ExpectedReturnDate,
-            b.BorrowStatus
+            b.BorrowStatus,
+            e.Category
         FROM BorrowingRecord b
         JOIN Equipment e
             ON b.EquipmentID = e.EquipmentID
@@ -442,15 +443,15 @@ def staff_edit_resource(equipment_id):
             if not error and data["status"] not in ALL_STATUSES:
                 error = "Invalid status."
 
-            if not error and data["status"] == "Borrowed":
-                active = conn.execute(
-                    """SELECT 1 FROM BorrowingRecord
-                       WHERE EquipmentID = ? AND BorrowStatus = 'Borrowed'""",
-                    (equipment_id,)
-                ).fetchone()
-                if not active:
-                    error = ("Borrowed is set automatically when a "
-                             "student borrows the item.")
+            # Student 3 - Protect borrowing and return statuses.
+            # Borrowed and Available are managed by the borrowing/return workflow.
+            # TODO: Student 7 - Connect trusted RFID verification.
+
+            if not error and data["status"] != resource["Status"]:
+              if (data["status"] == "Borrowed" or resource["Status"] == "Borrowed"):
+                 error = (
+                    "Borrowing and returning must use the "
+                    "RFID-verified workflow.")
 
             if not error:
                 try:
@@ -709,7 +710,26 @@ def edit_resource(equipment_id):
         academic_year = request.form["academic_year"].strip()
         rfid = request.form["rfid"].strip()
         status = request.form["status"]
+        # Student 3 - Prevent manual borrowing and returning.
 
+        current_resource = conn.execute(
+        "SELECT Status FROM Equipment WHERE EquipmentID = ?",
+        (equipment_id,)).fetchone()
+
+        if current_resource is None:
+             conn.close()
+             abort(404)
+
+        current_status = current_resource["Status"]
+
+        if status not in ALL_STATUSES:
+            conn.close()
+            abort(400, "Invalid resource status.")
+
+        if status != current_status:
+            if status == "Borrowed" or current_status == "Borrowed":
+                conn.close()
+                abort(403, "Borrowing and returning require RFID verification.")
         conn.execute(
             """UPDATE Equipment
                SET EquipmentName = ?,
@@ -782,122 +802,16 @@ def admin_transactions():
         admin_name=session["name"]
     )
 
+# SECURITY: Transaction status cannot be edited manually.
+# Borrowing is completed through the student borrowing workflow.
+# Returning requires trusted RFID verification.
+
 @app.route("/admin/transactions/<int:record_id>/status", methods=["POST"])
 def update_transaction_status(record_id):
     if session.get("role") != "Admin":
-        return redirect(url_for("login"))
+        abort(403)
 
-    new_status = request.form.get("status")
-
-    if new_status not in ("Borrowed", "Returned"):
-        abort(400)
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-
-        record = conn.execute(
-            """
-            SELECT EquipmentID, BorrowStatus
-            FROM BorrowingRecord
-            WHERE RecordID = ?
-            """,
-            (record_id,)
-        ).fetchone()
-
-        if record is None:
-            abort(404)
-
-        equipment_id = record["EquipmentID"]
-
-        if new_status == record["BorrowStatus"]:
-            return redirect(url_for("admin_transactions"))
-
-        if new_status == "Borrowed":
-            active = conn.execute(
-                """
-                SELECT 1
-                FROM BorrowingRecord
-                WHERE EquipmentID = ?
-                  AND BorrowStatus = 'Borrowed'
-                  AND RecordID != ?
-                """,
-                (equipment_id, record_id)
-            ).fetchone()
-
-            equipment = conn.execute(
-                "SELECT Status FROM Equipment WHERE EquipmentID = ?",
-                (equipment_id,)
-            ).fetchone()
-
-            if active or equipment is None or equipment["Status"] != "Available":
-                abort(409, "Resource is not available.")
-
-            conn.execute(
-                """
-                UPDATE BorrowingRecord
-                SET BorrowStatus = 'Borrowed',
-                    ActualReturnDate = NULL
-                WHERE RecordID = ?
-                """,
-                (record_id,)
-            )
-
-            conn.execute(
-                """
-                UPDATE Equipment
-                SET Status = 'Borrowed'
-                WHERE EquipmentID = ?
-                """,
-                (equipment_id,)
-            )
-
-        else:
-            conn.execute(
-                """
-                UPDATE BorrowingRecord
-                SET BorrowStatus = 'Returned',
-                    ActualReturnDate = COALESCE(
-                        ActualReturnDate, DATE('now', '+3 hours')
-                    )
-                WHERE RecordID = ?
-                """,
-                (record_id,)
-            )
-
-            active = conn.execute(
-                """
-                SELECT 1
-                FROM BorrowingRecord
-                WHERE EquipmentID = ?
-                  AND BorrowStatus = 'Borrowed'
-                """,
-                (equipment_id,)
-            ).fetchone()
-
-            if not active:
-                conn.execute(
-                    """
-                    UPDATE Equipment
-                    SET Status = 'Available'
-                    WHERE EquipmentID = ?
-                      AND Status = 'Borrowed'
-                    """,
-                    (equipment_id,)
-                )
-
-        conn.commit()
-
-    except Exception:
-        conn.rollback()
-        raise
-
-    finally:
-        conn.close()
-
-    return redirect(url_for("admin_transactions"))
+    abort(403, "Manual transaction status changes are disabled.")
 
 @app.route("/admin/users")
 def admin_users():
@@ -1140,6 +1054,49 @@ def complete_return_after_rfid(record_id, scanned_rfid):
 
     return success, message
 
+# RETURN VERIFICATION PAGE - Student 3
+# TODO: Student 7 - Connect the trusted RFID reader.
+# This page does not complete the return without RFID verification.
+
+@app.route("/return/<int:record_id>", methods=["GET"])
+def return_verification(record_id):
+
+    if session.get("role") not in ("Staff", "Admin"):
+        return redirect(url_for("login"))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    try:
+        record = conn.execute(
+            """
+            SELECT
+                br.RecordID,
+                br.BorrowStatus,
+                e.EquipmentName,
+                br.BorrowDate,
+                br.ExpectedReturnDate
+
+            FROM BorrowingRecord br
+            JOIN Equipment e
+                ON br.EquipmentID = e.EquipmentID
+            WHERE br.RecordID = ?
+            """,
+            (record_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if record is None:
+        abort(404)
+
+    if record["BorrowStatus"] != "Borrowed":
+        abort(409, "This equipment is not currently borrowed.")
+
+    return render_template(
+        "return_verification.html",
+        record=record
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)

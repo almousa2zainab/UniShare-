@@ -61,21 +61,52 @@
     </a>
 </div>
 
-<div class="resource-search">
+
+<!-- Student 3 - Admin Resource Search -->
+<div class="admin-resource-filters">
+
     <input
         type="text"
         id="equipmentSearch"
         placeholder="Search by equipment name..."
-        oninput="searchEquipment()"
         autocomplete="off"
     >
+
+    <select id="categoryFilter">
+        <option value="">All categories</option>
+        <option value="Microcontrollers">Microcontrollers</option>
+        <option value="Prototyping">Prototyping</option>
+        <option value="Sensors">Sensors</option>
+        <option value="Motors">Motors</option>
+        <option value="Candidate printed research papers">Candidate printed research papers</option>
+        <option value="Printed AI / CS graduation reports">Printed AI / CS graduation reports</option>
+    </select>
+
+    <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="Available">Available</option>
+        <option value="Borrowed">Borrowed</option>
+        <option value="Maintenance">Maintenance</option>
+    </select>
+
+    <button type="button" id="searchButton">
+        Search
+    </button>
+
+    <button type="button" id="resetButton" hidden>
+        Reset
+    </button>
+
 </div>
+
 
     <div class="resource-grid">
 
         {% for resource in resources %}
 
-        <div class="resource-card">
+        <div class="resource-card"
+          data-category="{{ resource['Category'] }}"
+         data-status="{{ resource['Status'] }}">
     <div>
         <h3>{{ resource["EquipmentName"] }}</h3>
         <p>{{ resource["Category"] }}</p>
@@ -110,23 +141,64 @@
 </section>
 </main>
 
+
 <script>
-function searchEquipment() {
-    const search = document.getElementById("equipmentSearch")
-        .value.toLowerCase().trim();
+    const equipmentSearch = document.getElementById("equipmentSearch");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const statusFilter = document.getElementById("statusFilter");
+    const searchButton = document.getElementById("searchButton");
+    const resetButton = document.getElementById("resetButton");
 
-    const cards = document.querySelectorAll(".resource-card");
+    function searchEquipment() {
+        const search = equipmentSearch.value.trim().toLowerCase();
+        const category = categoryFilter.value.toLowerCase();
+        const status = statusFilter.value.toLowerCase();
 
-    cards.forEach(card => {
-        const equipmentName = card.querySelector("h3")
-            .textContent.toLowerCase();
+        const cards = document.querySelectorAll(".resource-card");
 
-        card.style.display = equipmentName.includes(search)
-            ? ""
-            : "none";
+        cards.forEach(card => {
+            const equipmentName = card.querySelector("h3")
+                .textContent.toLowerCase();
+
+            const cardCategory = card.dataset.category
+                .trim().toLowerCase();
+
+            const cardStatus = card.dataset.status
+                .trim().toLowerCase();
+
+            const matchesSearch = equipmentName.includes(search);
+            const matchesCategory =
+                !category || cardCategory === category;
+            const matchesStatus =
+                !status || cardStatus === status;
+
+            card.style.display =
+                matchesSearch && matchesCategory && matchesStatus
+                    ? ""
+                    : "none";
+            resetButton.hidden = !(search || category || status);
+        });
+    }
+
+    searchButton.addEventListener("click", searchEquipment);
+
+    equipmentSearch.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            searchEquipment();
+        }
     });
-}
+
+    categoryFilter.addEventListener("change", searchEquipment);
+    statusFilter.addEventListener("change", searchEquipment);
+    document.getElementById("resetButton").addEventListener("click", () => {
+    equipmentSearch.value = "";
+    categoryFilter.value = "";
+    statusFilter.value = "";
+
+    searchEquipment();
+});
 </script>
+
 
 </body>
 </html>

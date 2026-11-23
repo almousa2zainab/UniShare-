@@ -79,3 +79,102 @@
 .edit-btn:hover {
     background-color: #e4dcfa;
 }
+
+/* Student 3 - Borrowing Records Search Bar */
+
+.records-filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+}
+
+.records-filters input,
+.records-filters select,
+.records-filters button {
+    box-sizing: border-box;
+    height: 40px !important;
+    min-height: 0 !important;
+    max-height: 40px;
+    font-size: 13px;
+    border-radius: 9px;
+}
+
+.records-filters input,
+.records-filters select {
+    padding: 0 12px !important;
+    border: 1px solid #d6d9e8;
+    background: #ffffff;
+    color: #1c2d4a;
+    min-width: 0;
+}
+
+/* Search field */
+.records-filters #recordSearch {
+    flex: 2 1 250px;
+    order: 1;
+}
+
+/* Categories */
+.records-filters #dateFilter {
+    flex: 1.6 1 220px;
+    order: 3;
+}
+
+/* Status */
+.records-filters #statusFilter {
+    flex: 1 1 140px;
+    order: 2;
+}
+
+/* Search button */
+.records-filters #searchButton {
+    flex: 0 0 auto;
+    order: 4;
+    padding: 0 20px !important;
+    border: none;
+    background: #5b43bd;
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.records-filters #searchButton:hover {
+    background: #4934a5;
+}
+
+.records-filters input:focus,
+.records-filters select:focus {
+    outline: 2px solid #6954e8;
+    outline-offset: 1px;
+}
+
+@media (max-width: 900px) {
+    .records-filters {
+        flex-wrap: wrap;
+    }
+}
+/* Student 3 - Reset button */
+
+.records-filters #resetButton {
+    order: 5;
+    flex: 0 0 auto;
+    height: 40px;
+    padding: 0 12px;
+    background: transparent;
+    border: none;
+    color: #5b43bd;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.records-filters #resetButton:hover {
+    color: #4934a5;
+    text-decoration: underline;
+}
+
+.records-filters #resetButton[hidden] {
+    display: none !important;
+}

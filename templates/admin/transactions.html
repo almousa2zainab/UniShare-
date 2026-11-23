@@ -52,6 +52,34 @@
         <p>Complete history of resource transactions.</p>
     </div>
 
+<!-- Student 3 - Transaction Search -->
+<div class="admin-table-filters" id="transactionFilters">
+
+    <input type="text"
+           id="transactionSearch"
+           placeholder="Search by user, resource or record ID"
+           autocomplete="off">
+
+    <select id="transactionStatus">
+        <option value="">All statuses</option>
+        <option value="Borrowed">Borrowed</option>
+        <option value="Returned">Returned</option>
+    </select>
+
+    <select id="transactionDate">
+        <option value="">All dates</option>
+        <option value="today">Today</option>
+        <option value="week">Last 7 days</option>
+        <option value="month">Last 30 days</option>
+    </select>
+
+    <button type="button" class="filter-search-btn"
+            id="transactionSearchButton">Search</button>
+
+    <button type="button" class="filter-reset-btn"
+            id="transactionReset" hidden>Reset</button>
+</div>
+
     <div class="transactions-table-container">
 
         <table class="transactions-table">
@@ -61,7 +89,6 @@
                     <th>ID</th>
                     <th>User</th>
                     <th>Resource</th>
-                    <th>Request Date</th>
                     <th>Borrow Date</th>
                     <th>Expected Return</th>
                     <th>Actual Return</th>
@@ -78,7 +105,6 @@
                     <td>{{ transaction["RecordID"] }}</td>
                     <td>{{ transaction["FullName"] }}</td>
                     <td>{{ transaction["EquipmentName"] }}</td>
-                    <td>{{ transaction["RequestDate"] }}</td>
                     <td>{{ transaction["BorrowDate"] or "-" }}</td>
                     <td>{{ transaction["ExpectedReturnDate"] or "-" }}</td>
                     <td>{{ transaction["ActualReturnDate"] or "-" }}</td>
@@ -91,9 +117,14 @@
                     
                  
 <td>
-    <button type="button" class="edit-btn">
-        Edit
-    </button>
+    {% if transaction["BorrowStatus"] == "Borrowed" %}
+        <a href="{{ url_for('return_verification', record_id=transaction['RecordID']) }}"
+           class="edit-btn">
+            Return
+        </a>
+    {% else %}
+        <span>—</span>
+    {% endif %}
 </td>
 
 
@@ -109,5 +140,95 @@
 
 </section>
 </main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("transactionSearch");
+    const statusInput = document.getElementById("transactionStatus");
+    const dateInput = document.getElementById("transactionDate");
+    const searchButton = document.getElementById("transactionSearchButton");
+    const resetButton = document.getElementById("transactionReset");
+
+    const rows = document.querySelectorAll(
+        ".transactions-table tbody tr"
+    );
+
+    function applyTransactionFilters() {
+        const query = searchInput.value.trim().toLowerCase();
+        const status = statusInput.value.toLowerCase();
+        const dateRange = dateInput.value;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll("td");
+            if (cells.length < 8) return;
+
+            const searchable = [
+                cells[0].textContent,
+                cells[1].textContent,
+                cells[2].textContent
+            ].join(" ").toLowerCase();
+
+            const rowStatus = cells[6].textContent.trim().toLowerCase();
+            const borrowedDate = cells[3].textContent.trim();
+
+            const matchesSearch = searchable.includes(query);
+            const matchesStatus = !status || rowStatus === status;
+
+            let matchesDate = true;
+
+            if (dateRange) {
+                const dateText = borrowedDate.slice(0, 10);
+                const date = /^\d{4}-\d{2}-\d{2}$/.test(dateText)
+                    ? new Date(dateText + "T00:00:00")
+                    : new Date(NaN);
+
+                if (Number.isNaN(date.getTime())) {
+                    matchesDate = false;
+                } else {
+                    const days = Math.floor(
+                        (today - date) / 86400000
+                    );
+
+                    const limits = {
+                        today: 1,
+                        week: 7,
+                        month: 30
+                    };
+
+                    matchesDate = days >= 0 &&
+                        days < limits[dateRange];
+                }
+            }
+
+            row.style.display =
+                matchesSearch && matchesStatus && matchesDate
+                    ? ""
+                    : "none";
+        });
+
+        resetButton.hidden = !(query || status || dateRange);
+    }
+
+    searchButton.addEventListener("click", applyTransactionFilters);
+
+    searchInput.addEventListener("keydown", event => {
+        if (event.key === "Enter") applyTransactionFilters();
+    });
+
+    statusInput.addEventListener("change", applyTransactionFilters);
+    dateInput.addEventListener("change", applyTransactionFilters);
+
+    resetButton.addEventListener("click", () => {
+        searchInput.value = "";
+        statusInput.value = "";
+        dateInput.value = "";
+        applyTransactionFilters();
+    });
+});
+</script>
+
 </body>
 </html>

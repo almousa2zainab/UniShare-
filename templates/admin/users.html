@@ -52,6 +52,28 @@
         <p>All users currently registered in the system.</p>
     </div>
 
+<!-- Student 3 - User Search -->
+<div class="admin-table-filters" id="userFilters">
+
+    <input type="text"
+           id="userSearch"
+           placeholder="Search by name, email or user ID"
+           autocomplete="off">
+
+    <select id="userRoleFilter">
+        <option value="">All roles</option>
+        <option value="Student">Student</option>
+        <option value="Staff">Staff</option>
+        <option value="Admin">Admin</option>
+    </select>
+
+    <button type="button" class="filter-search-btn"
+            id="userSearchButton">Search</button>
+
+    <button type="button" class="filter-reset-btn"
+            id="userReset" hidden>Reset</button>
+</div>
+
     <div class="transactions-table-container">
 
         <table class="transactions-table">
@@ -119,5 +141,59 @@
 
 </section>
 </main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("userSearch");
+    const roleInput = document.getElementById("userRoleFilter");
+    const searchButton = document.getElementById("userSearchButton");
+    const resetButton = document.getElementById("userReset");
+
+    const rows = document.querySelectorAll(
+        ".transactions-table tbody tr"
+    );
+
+    function applyUserFilters() {
+        const query = searchInput.value.trim().toLowerCase();
+        const role = roleInput.value.toLowerCase();
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll("td");
+            if (cells.length < 5) return;
+
+            const searchable = [
+                cells[0].textContent,
+                cells[1].textContent,
+                cells[2].textContent
+            ].join(" ").toLowerCase();
+
+            const rowRole = cells[3].textContent.trim().toLowerCase();
+
+            const matchesSearch = searchable.includes(query);
+            const matchesRole = !role || rowRole === role;
+
+            row.style.display =
+                matchesSearch && matchesRole ? "" : "none";
+        });
+
+        resetButton.hidden = !(query || role);
+    }
+
+    searchButton.addEventListener("click", applyUserFilters);
+
+    searchInput.addEventListener("keydown", event => {
+        if (event.key === "Enter") applyUserFilters();
+    });
+
+    roleInput.addEventListener("change", applyUserFilters);
+
+    resetButton.addEventListener("click", () => {
+        searchInput.value = "";
+        roleInput.value = "";
+        applyUserFilters();
+    });
+});
+</script>
+
 </body>
 </html>
